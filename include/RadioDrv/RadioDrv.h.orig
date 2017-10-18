@@ -1,0 +1,34 @@
+/**
+ * @file				RadioDrv.h
+ * @brief			RadioDrv.c 的头文件
+ * @author			fengxun
+ * @date			2017年10月18日
+ *   作    者: 		fengxun
+*/
+#ifndef __RADIODRV_H__
+#define __RADIODRV_H__
+
+#define SHORT_READ_START			(1<<0)
+#define SHORT_END_DISABLE			(1<<2)
+#define SHORT_DISABLED_TXEN			(1<<3)
+#define SHORT_ADDRESS_RSSISTART		(1<<4)
+#define SHORT_END_START				(1<<5)
+#define SHORT_ADDRESS_BCSTART		(1<<6)
+#define SHORT_DISABLED_RSSISTOP		(1<<8)
+
+
+#ifdef __cplusplus
+#if __cplusplus
+extern "C"{
+#endif
+#endif /* __cplusplus */
+
+
+#ifdef __cplusplus
+#if __cplusplus
+}
+#endif
+#endif /* __cplusplus */
+
+
+#endif /* __RADIODRV_H__ */
