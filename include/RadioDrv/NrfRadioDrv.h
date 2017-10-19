@@ -1,6 +1,6 @@
 /**
  * @file				RadioDrv.h
- * @brief			RadioDrv.c 的头文件
+ * @brief			NrfRadioDrv.c 的头文件
  * @author			fengxun
  * @date			2017年10月18日
  *   作    者: 		fengxun
@@ -42,6 +42,21 @@
 #define TXPOWER_POS4				0x04
 #define TXPOWER_0					0x00
 #define TXPOWER_NEG4				0xFC
+#define TXPOWER_NEG8				0xF8
+#define TXPOWER_NEG12				0xF4
+#define TXPOWER_NEG16				0xF0
+#define TXPOWER_NEG20				0xEC
+#define TXPOWER_NEG30				0xD8
+
+
+#define RADIO_MODE_1MBLE			3
+
+
+#define PCNF0_LFLEN_8BIT			(6)			// 4.0负载数据不会超过37字节，6bit就够了
+#define PCNF0_S0LEN_1BYTE			(1<<8)
+#define PCNF0_S1LEN_0BIT			(0<<16)
+
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
