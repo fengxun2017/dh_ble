@@ -1,9 +1,8 @@
 /**
  * @file				DhTypes.h
- * @brief			DhTypes.h 的头文件
+ * @brief			自定义简单类型
  * @author			fengxun
  * @date			2017年10月18日
- *   作    者: 		fengxun
 */
 #ifndef __DHTYPES_H__
 #define __DHTYPES_H__
