@@ -1,5 +1,7 @@
 #include "../../include/DhGloablHead.h"
 
+#define NRF_RADIO_ADDRESS           0x40001000UL
+
 typedef struct {                                   /*!< RADIO Structure                                                       */
   volatile	u4  TASKS_TXEN;                        /*!< Enable radio in TX mode.                                              */
   volatile	u4  TASKS_RXEN;                        /*!< Enable radio in RX mode.                                              */

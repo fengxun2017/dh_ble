@@ -94,7 +94,6 @@
 #define CRCCNF_SKIPADDR				(1<<8)
 #define CRCPOLY_BLE_POLY			BLE_CRC_POLY
 
-#define NRF_RADIO_ADDRESS           0x40001000UL
 
 
 

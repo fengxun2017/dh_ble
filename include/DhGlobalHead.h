@@ -8,11 +8,11 @@
 #define __DHGLOBALHEAD_H__
 
 
-#include "DhTypes.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include "DhTypes.h"
+#include "DhBleDefine.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -27,8 +27,6 @@ extern "C"{
 #endif
 #endif /* __cplusplus */
 
-
-#include "DhBleDefine.h"
-#include "NrfDrv/NrfRadioDrv.h"
+#include "HardwareHead.h"
 
 #endif /* __DHGLOBALHEAD_H__ */
