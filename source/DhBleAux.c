@@ -20,14 +20,15 @@
  */
 u2 	GetDataChannelFreq(u1 u1DataChannel)
 {
-	if ( u1DataChannel>=BLE_DATA_CHANNEL_0 && u1DataChannel <=BLE_DATA_CHANNEL_10 )
+	if ( u1DataChannel <=BLE_DATA_CHANNEL_10 )
 	{
-		return RF_CHANNEL1_FREQ+u1DataChannel*2
+		return RF_CHANNEL1_FREQ+u1DataChannel*2;
 	}
 	else if ( u1DataChannel>=BLE_DATA_CHANNEL_11 && u1DataChannel<=BLE_DATA_CHANNEL_36 )
 	{
 		return RF_CHANNEL13_FREQ+(u1DataChannel-BLE_DATA_CHANNEL_11)*2;
 	}
+	return 0xFFFF;
 }
 
 /**
@@ -51,4 +52,5 @@ u2 GetAdvChannelFreq(u1 u1AdvChannel)
 	{
 		return RF_CHANNEL39_FREQ;
 	}
+	return 0xFFFF;
 }

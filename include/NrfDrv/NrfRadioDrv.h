@@ -26,7 +26,7 @@
 #define INTEN_RSSIEND				(1<<7)
 #define INTEN_BCMATCH				(1<<10)
 
-#define INTCLR_READY					(1<<0)
+#define INTCLR_READY				(1<<0)
 #define INTCLR_ADDRESS				(1<<1)
 #define INTCLR_PAYLOAD				(1<<2)
 #define INTCLR_END					(1<<3)

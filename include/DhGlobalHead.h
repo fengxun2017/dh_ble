@@ -11,8 +11,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdarg.h>
 #include "DhTypes.h"
 #include "DhBleDefine.h"
+#include "DhConfig.h"
+#include "./debug/DhDebug.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -28,5 +33,5 @@ extern "C"{
 #endif /* __cplusplus */
 
 #include "HardwareHead.h"
-
+#include "./BleDrv/BleLPowerTimer.h"
 #endif /* __DHGLOBALHEAD_H__ */
