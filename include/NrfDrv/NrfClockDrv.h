@@ -21,6 +21,7 @@ extern "C"{
 #endif /* __cplusplus */
 
 extern void NrfLFClkStart( EnNrfLFClockSrc src );
+extern void NrfHFClkSrcSetXtal(void);
 
 #ifdef __cplusplus
 #if __cplusplus

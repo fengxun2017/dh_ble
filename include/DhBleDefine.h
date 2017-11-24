@@ -10,7 +10,7 @@
 #define BLE_VERSION			0x40
 
 #if(BT_VERSION == 0x40)
-#define	BLE_PDU_PAYLOAD		37
+#define	BLE_PDU_PAYLOAD		39		/*2字节header+37字节payload*/
 #endif
 
 
@@ -67,7 +67,7 @@
 #define BLE_DATA_CHANNEL_35			(35)
 #define BLE_DATA_CHANNEL_36			(36)
 
-
+#define BLE_INVALID_CHANNEL			(0xFF)
 
 
 

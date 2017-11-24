@@ -67,7 +67,7 @@ __INLINE void NrfRtc0Start(void){NRF_RTC0->TASKS_START = 1;}
 __INLINE void NrfRtc0Stop(void){NRF_RTC0->TASKS_STOP = 1;}
 
 extern void NrfRtc0Init(void);
-extern void NrfRtc0Register(Rtc0IntHandler IntHandler);
+extern void NrfRtc0HandlerRegister(Rtc0IntHandler IntHandler);
 extern void NrfRtc0SetCmpReg(EnNrfCmpReg reg, u4 u4TimeoutUs, u1 isAbsolute);
 
 #ifdef __cplusplus

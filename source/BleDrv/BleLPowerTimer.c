@@ -10,14 +10,14 @@
 
 typedef struct
 {
-    BleLPowerTimeroutHandler cb;		/* 回调函数 */
-    void *pvalue;						/* 传给回调函数的参数 */
+    BleLPowerTimeroutHandler m_cb;		/* 回调函数 */
+    void *m_pValue;						/* 传给回调函数的参数 */
 } BlkLPTimerCb;
 
 
 typedef struct
 {
-    BlkLPTimerCb LPTimer[3];
+    BlkLPTimerCb m_pblkLPTimer[3];
 } BlkLPTimerManager;
 
 BlkLPTimerManager g_blkBleLPTimer;
@@ -87,8 +87,8 @@ static void Rtc0IntCb( EnNrfRtc0Evt evt )
     
     if ( BLE_LP_TIMER_INVALID != timerId )
     {
-    	cb = g_blkBleLPTimer.LPTimer[timerId].cb;
-    	pvalue = g_blkBleLPTimer.LPTimer[timerId].pvalue;
+    	cb = g_blkBleLPTimer.m_pblkLPTimer[timerId].m_cb;
+    	pvalue = g_blkBleLPTimer.m_pblkLPTimer[timerId].m_pValue;
 	}
     if ( NULL != cb )
     {
@@ -131,8 +131,8 @@ void BleLPowerTimerInit( void )
  */
 void BleLPowerTimerStart( EnBleLPowerTimer timerId, u4 timeoutUs, BleLPowerTimeroutHandler cb, void *pvalue)
 {	
-	g_blkBleLPTimer.LPTimer[timerId].cb = cb;
-	g_blkBleLPTimer.LPTimer[timerId].pvalue = pvalue;
+	g_blkBleLPTimer.m_pblkLPTimer[timerId].m_cb = cb;
+	g_blkBleLPTimer.m_pblkLPTimer[timerId].m_pValue = pvalue;
 	
 		/* 如果是 BLE_LP_TIMER0 ，则复位rtc状态让其从0开始计数*/
 	if( BLE_LP_TIMER0 == timerId )

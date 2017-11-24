@@ -17,6 +17,7 @@
 #include "DhTypes.h"
 #include "DhBleDefine.h"
 #include "DhConfig.h"
+#include "DhBleAux.h"
 #include "./debug/DhDebug.h"
 
 #ifdef __cplusplus
@@ -34,4 +35,7 @@ extern "C"{
 
 #include "HardwareHead.h"
 #include "./BleDrv/BleLPowerTimer.h"
+#include "./BleDrv/BleRadioDrv.h"
+#include "./BleStck/BleLink/BleLink.h"
+#include "./BleStck/BleLink/BleLinkAdvertising.h"
 #endif /* __DHGLOBALHEAD_H__ */

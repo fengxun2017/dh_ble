@@ -24,7 +24,7 @@ extern "C"{
 #include "NrfDrv/system_nrf51.h"
 #include "NrfDrv/nrf51.h"
 #include "NrfDrv/nrf51_bitfields.h"
-#include "NrfDrv/NrfDrvRtc.h"
+#include "NrfDrv/NrfRtcDrv.h"
 #include "NrfDrv/NrfRadioDrv.h"
 #include "NrfDrv/nrf_gpio.h"
 #include "NrfDrv/NrfClockDrv.h"

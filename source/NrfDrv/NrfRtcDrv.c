@@ -51,12 +51,12 @@ void NrfRtc0Init(void)
 }
 
 /**
- *@brief: 		NrfRtc0Register
+ *@brief: 		NrfRtc0HandlerRegister
  *@details:		设置RTC0的中断事件处理函数
  *@param[in]	IntHandler 中断事件处理函数  
  *@retval:		void
  */
-void NrfRtc0Register ( Rtc0IntHandler IntHandler)
+void NrfRtc0HandlerRegister ( Rtc0IntHandler IntHandler)
 {
 	S_NrfRtc0IntCb = IntHandler;
 }
