@@ -57,10 +57,45 @@
 #define ATT_OPCODE_NOTIFY						0x1B
 #define ATT_OPCODE_INDICATION					0x1D
 #define ATT_OPCODE_CONFIRMATION					0x1E
-#define ATT_OPCODE_READ_BY_TYPE			0x08
-#define ATT_OPCODE_WRITE_REQ			0x12
 
+#define ATT_ERR_RSP_SIZE						0x05
+#define ATT_EXCHANGE_MTU_RSP					0x03
+static u4 BleAttErrRsp(u1 reqOpcode, u2 attHandle, u1 errCode)
+{
+	u1 pu1Rsp[ATT_ERR_RSP_SIZE];
+	u1 index;
 
+	pu1Rsp[index++] = ATT_OPCODE_ERROR;
+	pu1Rsp[index++] = reqOpcode;
+	pu1Rsp[index++] = attHandle&0xff;
+	pu1Rsp[index++] = attHandle>>8;
+	pu1Rsp[index++] = errCode;
+
+	if( BleL2capDataSend(BLE_L2CAP_ATT_CHANNEL_ID, pu1Rsp, index) != DH_SUCCESS )
+	{
+		DEBUG_INFO("send att err rsp err!!");
+		return ERR_ATT_SEND_RSP_FAILED;
+	}
+
+	return DH_SUCCESS;
+}
+static u4 BleAttMtuRsp(u2 MTU)
+{
+	u1 pu1Rsp[ATT_EXCHANGE_MTU_RSP];
+	u1 index;
+
+	pu1Rsp[index++] = ATT_OPCODE_MTU_EXCHANGE_RSP;
+	pu1Rsp[index++] = MTU&0xff;
+	pu1Rsp[index++] = MTU>>8;
+
+	if( BleL2capDataSend(BLE_L2CAP_ATT_CHANNEL_ID, pu1Rsp, index) != DH_SUCCESS )
+	{
+		DEBUG_INFO("send mtu rsp err!!");
+		return ERR_ATT_SEND_RSP_FAILED;
+	}
+
+	return DH_SUCCESS;
+}
 u4 BleAttHandle(u1 *pu1Data, u2 len)
 {
 	
