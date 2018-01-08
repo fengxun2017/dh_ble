@@ -9,20 +9,16 @@
 #include "../DhGlobalHead.h"
 
 
-#define RTC0_RESOLUTION					(30.517)				/* 30.517 μs RTC0的分辨率*/
-#define RTC0_JITTER						(30)					/* 根据手册 RTC的CLEAR STOP START有平均30us的延迟*/
-#define RTC_US_TO_COUNT(US)				(((US)-30+RTC0_RESOLUTION/2)/RTC0_RESOLUTION)	/*减去RTC的延迟，并做四舍五入*/
-
-#define SET_CC_ABSOLUTE					(1)
-#define SET_CC_RELATIVE					(0)
+#define SET_RTC_CC_ABSOLUTE					(1)
+#define SET_RTC_CC_RELATIVE					(0)
 
 typedef enum
 {
-	NRF_CMPREG_0 = 0,
-	NRF_CMPREG_1,
-	NRF_CMPREG_2,
-	NRF_CMPREG_INVALID
-}EnNrfCmpReg;
+	NRF_RTC_CMPREG_0 = 0,
+	NRF_RTC_CMPREG_1,
+	NRF_RTC_CMPREG_2,
+	NRF_RTC_CMPREG_INVALID
+}EnNrfRtcCmpReg;
 
 typedef enum
 {
@@ -66,9 +62,13 @@ __INLINE void NrfRtc0Start(void){NRF_RTC0->TASKS_START = 1;}
  */
 __INLINE void NrfRtc0Stop(void){NRF_RTC0->TASKS_STOP = 1;}
 
+extern u4 NrfRtc0CounterGet(void);
 extern void NrfRtc0Init(void);
 extern void NrfRtc0HandlerRegister(Rtc0IntHandler IntHandler);
-extern void NrfRtc0SetCmpReg(EnNrfCmpReg reg, u4 u4TimeoutUs, u1 isAbsolute);
+extern void NrfRtc0SetCmpReg(EnNrfRtcCmpReg reg, u4 u4TimeoutUs, u1 isAbsolute);
+extern void NrfRtc0DisableCmpReg(EnNrfRtcCmpReg reg);
+
+extern void NrfRtc0HandlerRegister ( Rtc0IntHandler IntHandler);
 
 #ifdef __cplusplus
 #if __cplusplus

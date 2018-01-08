@@ -18,7 +18,12 @@
 #include "DhBleDefine.h"
 #include "DhConfig.h"
 #include "DhBleAux.h"
+#include "./Common/DhQueue.h"
 #include "./debug/DhDebug.h"
+#include "./DhError.h"
+
+#define CRITICAL_REGION_ENTER()		__disable_irq()
+#define CRITICAL_REGION_EXIT()		__enable_irq()
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -35,7 +40,14 @@ extern "C"{
 
 #include "HardwareHead.h"
 #include "./BleDrv/BleLPowerTimer.h"
+#include "./BleDrv/BleHAccuracyTimer.h"
 #include "./BleDrv/BleRadioDrv.h"
-#include "./BleStck/BleLink/BleLink.h"
-#include "./BleStck/BleLink/BleLinkAdvertising.h"
+#include "./BleStack/DhBleEventNtf.h"
+#include "./BleStack/BleL2cap.h"
+#include "./BleStack/BleAtt.h"
+#include "./BleStack/BleGatt.h"
+#include "./BleStack/BleLink/BleLink.h"
+#include "./BleStack/BleLink/BleLinkAdvertising.h"
+#include "./BleStack/BleLink/BleLinkConnect.h"
+#include "./BkeStack/BleLink/BleLinkControl.h"
 #endif /* __DHGLOBALHEAD_H__ */

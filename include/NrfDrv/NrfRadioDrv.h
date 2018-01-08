@@ -34,7 +34,7 @@ extern "C" {
 
  *@retval:		1-CRC校验通过		0-CRC校验失败
  */
-__INLINE u1 NrfRadioCrcStatusGet(void){ return NRF_RADIO->CRCSTATUS; }
+__INLINE u1 NrfRadioCrcStatusGet(void){ return NRF_RADIO->CRCSTATUS&0x01; }
 
 
 /**
@@ -54,7 +54,7 @@ __INLINE u1 NrfRadioRxMatchIndexGet(void){return NRF_RADIO->RXMATCH;}
  
  *@retval:		void
  */
-__INLINE void NrfRadioPacketPtrCfg(u1 *pu1Packet){NRF_RADIO->PACKETPTR = pu1Packet;}
+__INLINE void NrfRadioPacketPtrCfg(u1 *pu1Packet){NRF_RADIO->PACKETPTR = (u4)pu1Packet;}
 
 
 /**
@@ -64,7 +64,7 @@ __INLINE void NrfRadioPacketPtrCfg(u1 *pu1Packet){NRF_RADIO->PACKETPTR = pu1Pack
 
  *@retval:		void
  */
-__INLINE void NrfRadioFreqCfg(u2 u2Freq){NRF_RADIO->FREQUENCY = u2Freq-2400;}
+__INLINE void NrfRadioFreqCfg(u2 u2Freq){NRF_RADIO->FREQUENCY = (u2Freq-2400);}
 
 /**
  *@brief: 		NrfRadioTxAddrCfg
@@ -159,7 +159,7 @@ __INLINE u1 IsNrfRadioMeasuRssiEnd(void)
 
  *@retval:		RSSI的值
  */
-__INLINE s1 NrfRadioRssiResultGet(void){return NRF_RADIO->RSSISAMPLE*(-1);}
+__INLINE s1 NrfRadioRssiResultGet(void){return ((s1)NRF_RADIO->RSSISAMPLE)*(-1);}
 
 
 /**
@@ -239,7 +239,7 @@ __INLINE void NrfRadioAutoRx2TxDisable(void){NRF_RADIO->SHORTS &= ~(NRF_RADIO_SH
 extern void NrfLogicAddrCfg(u1 u1LogicAddr, u4 u4PhyAddr);
 extern void NrfRadioInit(void);
 extern void NrfRadioTxPowerSet(s1 s1TxPower);
-extern void NrfRadioHandlerReg(RadioIntHandler intHandler);
+extern void NrfRadioHandlerReg(NrfRadioIntHandler intHandler);
 
 
 #ifdef __cplusplus

@@ -10,7 +10,7 @@ BleRadioEvtHandler s_BleRadioHandler = NULL;
 
 #define DEFAULT_TXPOWER		(-4)
 
-static HwRadioIntHandler( EnNrfRadioEvt evt )
+static void HwRadioIntHandler( EnNrfRadioEvt evt )
 {
     if( NULL != s_BleRadioHandler )
     {
@@ -23,7 +23,7 @@ static HwRadioIntHandler( EnNrfRadioEvt evt )
 
 
 
-void BleRadioEvtHandlerReg( RadioEvtHandler intHandler )
+void BleRadioEvtHandlerReg( BleRadioEvtHandler intHandler )
 {
     s_BleRadioHandler = intHandler;
 }
@@ -31,11 +31,13 @@ void BleRadioEvtHandlerReg( RadioEvtHandler intHandler )
 /**
  *@brief: 		BleRadioInit
  *@details:		Ble的Radio初始化
+ 				启动16M外部晶振，初始化radio，设置默认发射功率，注册radio中断处理函数
 
  *@retval:		void
  */
 void BleRadioInit( void )
 {
+    NrfHFClkSrcSetXtal();	// ble需要外部16M晶振
     NrfRadioInit();
     NrfRadioTxPowerSet( DEFAULT_TXPOWER );
     NrfRadioHandlerReg(HwRadioIntHandler);

@@ -9,11 +9,17 @@
 
 #define BLE_VERSION			0x40
 
-#if(BT_VERSION == 0x40)
-#define	BLE_PDU_PAYLOAD		39		/*2字节header+37字节payload*/
+#if (BLE_VERSION == 0x40)
+#define	BLE_PDU_LENGTH				(39)		/* 协议数据单元长度为39字节，2字节header+37字节payload*/
+#define BLE_PDU_HEADER_LENGTH		(2)
+#define BLE_PREAMBLE_LENGTH			(1)
+#define BLE_ACC_ADDR_LENGTH			(4)
+#define BLE_CRC_LENGTH				(3)
+#define BLE_PACKET_LENGTH	(BLE_PREAMBLE_LENGTH+BLE_ACC_ADDR_LENGTH+BLE_PDU_LENGTH+BLE_CRC_LENGTH)
+#define BLE_VERSION_NUMBER			(0x06)		/* 6-4.0 7-4.1 8-4.2 9-5.0*/
 #endif
 
-
+/* 广播的接入地址是固定的*/
 #define BLE_ADV_ACCESS_ADDR			(0x8E89BED6)
 
 /* BLE CRC多项式为x24 + x10 + x9 + x6 + x4 + x3 + x + 1 */
@@ -25,10 +31,15 @@
 /* BLE帧间间隔为150us */
 #define BLE_TIFS_VALUE				(150)
 
+/* BLE地址长度 */
+#define BLE_ADDR_LEN				(6)
+
+#define BLE_ADV_CHANNEL_NUMBER		(3)
 #define BLE_ADV_CHANNEL_37			(37)
 #define BLE_ADV_CHANNEL_38			(38)
 #define BLE_ADV_CHANNEL_39			(39)
 
+#define BLE_DATA_CHANNEL_NUMBER		(37)
 #define BLE_DATA_CHANNEL_0			(0)
 #define BLE_DATA_CHANNEL_1			(1)
 #define BLE_DATA_CHANNEL_2			(2)
@@ -66,13 +77,7 @@
 #define BLE_DATA_CHANNEL_34			(34)
 #define BLE_DATA_CHANNEL_35			(35)
 #define BLE_DATA_CHANNEL_36			(36)
-
 #define BLE_INVALID_CHANNEL			(0xFF)
-
-
-
-
-
 
 
 #endif /* __BLECONFIG_H__ */

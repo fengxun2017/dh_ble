@@ -15,7 +15,7 @@ typedef enum
 }EnBleRadioEvt;
 
 
-typedef void (*RadioEvtHandler)(EnBleRadioEvt);
+typedef void (*BleRadioEvtHandler)(EnBleRadioEvt);
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -23,7 +23,7 @@ extern "C"{
 #endif
 #endif /* __cplusplus */
 
-void BleRadioEvtHandlerReg( RadioEvtHandler intHandler );
+void BleRadioEvtHandlerReg( BleRadioEvtHandler intHandler );
 
 extern void BleRadioCrcInit(u4 u4CrcInit);
 extern void BleRadioDisable(void);

@@ -5,6 +5,7 @@
  * @date			2017年10月17日
 */
 #include "../include/DhGlobalHead.h"
+
 #define RF_CHANNEL0_FREQ			(2402)
 #define RF_CHANNEL1_FREQ			(2404)
 #define RF_CHANNEL12_FREQ			(2426)
@@ -53,3 +54,5 @@ u1	GetChannelWhiteIv(u1 channel )
 {
 	return channel;
 }
+
+

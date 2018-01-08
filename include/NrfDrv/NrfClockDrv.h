@@ -20,7 +20,7 @@ extern "C"{
 #endif
 #endif /* __cplusplus */
 
-extern void NrfLFClkStart( EnNrfLFClockSrc src );
+extern void NrfLFClkStart( EnNrfLFClockSrc src , u4 u4CalTimeoutMs);
 extern void NrfHFClkSrcSetXtal(void);
 
 #ifdef __cplusplus

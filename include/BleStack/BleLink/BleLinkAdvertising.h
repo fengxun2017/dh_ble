@@ -6,6 +6,7 @@
 */
 #ifndef __BLELINKADVERTISING_H__
 #define __BLELINKADVERTISING_H__
+#include "../../DhGlobalHead.h"
 
 typedef struct 
 {
@@ -21,6 +22,12 @@ extern "C"{
 #endif
 #endif /* __cplusplus */
 
+extern void LinkAdvAddrInfoCfg(BlkBleAddrInfo addr);
+extern u4 LinkAdvDataCfg(u1 *pu1Data, u2	len);
+extern void LinkAdvParamsCfg(BlkAdvChannelOn channels, u2 intervalMs);
+extern u4 LinkAdvStart(void);
+extern void LinkAdvStateInit(void);
+extern u4	LinkScanRspCfg(u1 *pu1Data, u2	len);
 
 #ifdef __cplusplus
 #if __cplusplus

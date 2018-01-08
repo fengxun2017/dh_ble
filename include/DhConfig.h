@@ -5,7 +5,7 @@
  * @date			2017年11月7日
 */
 
-#define DH_IRQ_PRIORITY_0		(0)
+#define DH_IRQ_PRIORITY_0		(0)		// 最高优先级
 #define DH_IRQ_PRIORITY_1		(1)
 #define DH_IRQ_PRIORITY_2		(2)
 #define DH_IRQ_PRIORITY_3		(3)

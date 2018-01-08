@@ -24,7 +24,11 @@
 
 #define		PRESCALER_VALUE		(0)		// The COUNTER resolution will therefore be 30.517 μs.
 
-u4 GET_CMP_OFFSET[] = {EVTEN_COMPARE0,EVTEN_COMPARE1,EVTEN_COMPARE2};
+#define RTC0_RESOLUTION					(30.517)				/* 30.517 μs RTC0的分辨率*/
+#define RTC0_JITTER						(30)					/* 根据手册 RTC的CLEAR STOP START有平均30us的延迟*/
+#define RTC_US_TO_COUNT(US)				(((US)-RTC0_JITTER+RTC0_RESOLUTION/2)/RTC0_RESOLUTION)	/*减去RTC的延迟，并做四舍五入*/
+
+static u4 GET_CMP_OFFSET[] = {EVTEN_COMPARE0,EVTEN_COMPARE1,EVTEN_COMPARE2};
 static Rtc0IntHandler S_NrfRtc0IntCb = NULL;
  
 /**
@@ -69,30 +73,53 @@ void NrfRtc0HandlerRegister ( Rtc0IntHandler IntHandler)
  *@param[in]	isAbsolute	是否是设置绝对值，绝对值则直接设置cc寄存器，否则为相对值，需要先获取当前的COUNT值相加后设置cc寄存器的值
  *@retval:		void
  */
-void NrfRtc0SetCmpReg(EnNrfCmpReg reg, u4 u4TimeoutUs, u1 isAbsolute)
+void NrfRtc0SetCmpReg(EnNrfRtcCmpReg reg, u4 u4TimeoutUs, u1 isAbsolute)
 {
 	u1 regNum;
 	u4 curCounter = 0;
 	
 	regNum = reg;
-	NRF_RTC0->EVTENSET = GET_CMP_OFFSET[reg];
-	if( SET_CC_RELATIVE == isAbsolute )
+	NRF_RTC0->EVTEN |= GET_CMP_OFFSET[reg];
+	if( SET_RTC_CC_RELATIVE == isAbsolute )
 	{
 		curCounter = NRF_RTC0->COUNTER;
-		DEBUG_INFO("current counter:%d",curCounter);
 	}
 	NRF_RTC0->CC[regNum] =curCounter + RTC_US_TO_COUNT(u4TimeoutUs);
-	DEBUG_INFO("set cc:%d",NRF_RTC0->CC[regNum]);
+}
+
+/**
+ *@brief: 		NrfRtc0DisableCmpReg
+ *@details:		关闭某个比较器的中断功能
+ *@param[in]	reg  比较器寄存器
+ 
+ *@retval:		void
+ */
+void NrfRtc0DisableCmpReg(EnNrfRtcCmpReg reg)
+{
+		NRF_RTC0->EVTEN &= ~GET_CMP_OFFSET[reg];
+}
+
+/**
+ *@brief: 		NrfRtc0CounterGet
+ *@details:		获取当前的Rtc0 counter值
+ *@retval:		void
+ */
+u4 NrfRtc0CounterGet(void)
+{
+	return NRF_RTC0->COUNTER;
 }
 
 
 void RTC0_IRQHandler(void)
 {
+	u4	regBackup;
+	
+	regBackup = NRF_RTC0->EVTEN;
 	if ( NRF_RTC0->EVENTS_COMPARE[0] )
 	{
 		NRF_RTC0->EVENTS_COMPARE[0] = 0;
-		NRF_RTC0->EVTENCLR |= EVTEN_COMPARE0;	// 产生事件后就除能产生事件，使定时器只能作用一次。
-		if ( NULL != S_NrfRtc0IntCb )
+		NRF_RTC0->EVTEN &= ~EVTEN_COMPARE0;	// 产生事件后就除能产生事件，使定时器只作用一次。
+		if ( NULL!=S_NrfRtc0IntCb && regBackup&EVTEN_COMPARE0 )
 		{
 			S_NrfRtc0IntCb(NRF_RTC0_EVT_COMPARE0);
 		}
@@ -100,25 +127,28 @@ void RTC0_IRQHandler(void)
 	if ( NRF_RTC0->EVENTS_COMPARE[1] )
 	{
 		NRF_RTC0->EVENTS_COMPARE[1] = 0;
-		NRF_RTC0->EVTENCLR |= EVTEN_COMPARE1;
-		if ( NULL != S_NrfRtc0IntCb )
+		NRF_RTC0->EVTEN &= ~EVTEN_COMPARE1;	// 产生事件后就除能产生事件，使定时器只作用一次。
+		
+		if ( NULL != S_NrfRtc0IntCb && regBackup&EVTEN_COMPARE1 )
 		{
 			S_NrfRtc0IntCb(NRF_RTC0_EVT_COMPARE1);
 		}
+		
 	}
 	if ( NRF_RTC0->EVENTS_COMPARE[2] )
 	{
 		NRF_RTC0->EVENTS_COMPARE[2] = 0;
-		NRF_RTC0->EVTENCLR |= EVTEN_COMPARE2;
-		if ( NULL != S_NrfRtc0IntCb )
+		NRF_RTC0->EVTEN &= ~EVTEN_COMPARE2;
+		if ( NULL != S_NrfRtc0IntCb && regBackup&EVTEN_COMPARE2 )
 		{
 			S_NrfRtc0IntCb(NRF_RTC0_EVT_COMPARE2);
 		}
+		
 	}
 	if ( NRF_RTC0->EVENTS_COMPARE[3] )	/* 手册说RTC0只有3个比较寄存器，应该不会有这个中断的 */
 	{
 		NRF_RTC0->EVENTS_COMPARE[3] = 0;
-		NRF_RTC0->EVTENCLR |= EVTEN_COMPARE3;
+		NRF_RTC0->EVTEN &= ~EVTEN_COMPARE3;
 		
 	}	
 }

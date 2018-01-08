@@ -19,14 +19,14 @@ static char buffer[BUFF_SIZE]; // The buffer
 void rtt_log_general_print(int terminal, const char* color, const char *file, int line, const char * sFormat, ...) {
   static int initialized = 0;
                              //01234567890123456789012345
-static const char *spaces = "                          ";
-	const char *lastSlash = file;
-	const char *current = file;	
-	int nameLen;
+//static const char *spaces = "                          ";
+//	const char *lastSlash = file;
+//	const char *current = file;	
+//	int nameLen;
 	va_list ParamList;
 
 if(!initialized) {
-	SEGGER_RTT_ConfigUpBuffer(LOG_BUFF, NULL, buffer, BUFF_SIZE, SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL);
+	SEGGER_RTT_ConfigUpBuffer(LOG_BUFF, NULL, buffer, BUFF_SIZE, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
 	initialized = 1;
 }
 

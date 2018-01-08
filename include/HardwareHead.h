@@ -26,6 +26,7 @@ extern "C"{
 #include "NrfDrv/nrf51_bitfields.h"
 #include "NrfDrv/NrfRtcDrv.h"
 #include "NrfDrv/NrfRadioDrv.h"
+#include "NrfDrv/NrfTimerDrv.h"
 #include "NrfDrv/nrf_gpio.h"
 #include "NrfDrv/NrfClockDrv.h"
 #endif /* __HARDWAREHEAD_H__ */
