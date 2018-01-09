@@ -10,7 +10,7 @@
 typedef struct
 {
 	u1	uuidType;
-	u1	*pu1Uuid;
+	u1	*pu1Uuid;		/* 指向实际存放uuid的buff，UUID 按LSB格式存放 */
 }BlkAttributeType;
 
 typedef struct

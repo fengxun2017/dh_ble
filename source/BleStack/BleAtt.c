@@ -29,23 +29,23 @@
 	
 
 */
-#define ATT_INVALID_HANDLE						0x01	
-#define ATT_READ_NOT_PERMITTED					0x02
-#define ATT_WRITE_NOT_PERMITTED					0x03
-#define ATT_INVALID_PDU							0x04
-#define ATT_INSUFFICIENT_AUTHENTICATION			0x05
-#define ATT_REQUEST_NOT_SUPPORTED				0x06
-#define ATT_INVALID_OFFSET						0x07
-#define ATT_INSUFFICIENT_AUTHORIZATION			0x08
-#define ATT_PREPARE_QUEUE_FULL					0x09
-#define ATT_ATTRIBUTE_NOT_FOUND					0x0A
-#define ATT_ATTRIBUTE_NOT_LONG					0x0B
-#define ATT_INSUFFICIENT_ENCRYPTION_KEYSIZE		0x0C
-#define ATT_INVALID_ATTRIBUTE_VALUE_LEN			0x0D
-#define ATT_UNLIKELY_ERROR						0x0E
-#define ATT_INSUFFICIENT_ENCRYPTION				0x0F
-#define ATT_UNSUPPORTED_GROUP_TYPE				0x10
-#define ATT_INSUFFICIENT_RESOURCES				0x11
+#define ATT_ERR_INVALID_HANDLE						0x01	
+#define ATT_ERR_READ_NOT_PERMITTED					0x02
+#define ATT_ERR_WRITE_NOT_PERMITTED					0x03
+#define ATT_ERR_INVALID_PDU							0x04
+#define ATT_ERR_INSUFFICIENT_AUTHENTICATION			0x05
+#define ATT_ERR_REQUEST_NOT_SUPPORTED				0x06
+#define ATT_ERR_INVALID_OFFSET						0x07
+#define ATT_ERR_INSUFFICIENT_AUTHORIZATION			0x08
+#define ATT_ERR_PREPARE_QUEUE_FULL					0x09
+#define ATT_ERR_ATTRIBUTE_NOT_FOUND					0x0A
+#define ATT_ERR_ATTRIBUTE_NOT_LONG					0x0B
+#define ATT_ERR_INSUFFICIENT_ENCRYPTION_KEYSIZE		0x0C
+#define ATT_ERR_INVALID_ATTRIBUTE_VALUE_LEN			0x0D
+#define ATT_ERR_UNLIKELY_ERROR						0x0E
+#define ATT_ERR_INSUFFICIENT_ENCRYPTION				0x0F
+#define ATT_ERR_UNSUPPORTED_GROUP_TYPE				0x10
+#define ATT_ERR_INSUFFICIENT_RESOURCES				0x11
 
 #define ATT_OPCODE_ERROR						0x01
 #define ATT_OPCODE_MTU_EXCHANGE_REQ				0x02
@@ -79,11 +79,41 @@
 #define ATT_GROUP_TYPE_PRIMARY_SERVICE			0x2800
 #define ATT_GROUP_TYPE_SECOND_SERVICE			0x2801
 
+#define ATT_INVALID_HANDLE						0x0000
+#define UUID_FORMAT_16BIT						0x01
+#define UUID_FORMAT_128BIT						0x02
+
 #define ATT_ERR_RSP_LEN							0x05
 #define ATT_EXCHANGE_MTU_RSP_LEN				0x03
 
-#define ATT_FIND_INFO_REQ_LEN					0x04		/* 去除opcode后的长度 */
+#define ATT_FIND_INFO_REQ_LEN					(4)		/* 去除opcode后的长度 */
+#define ATT_READ_GROUP_TYPE_REQ_LEN1			(6)
+#define ATT_READ_GROUP_TYPE_REQ_LEN2			(20)
 
+static u1 CheckGroupType(u1 *pu1Uuid, u1 uuidType)
+{
+	u1	pu1PrimarySrvUuid[] = {0x00,0x28};
+	u1	pu1SecondSSrvUuid[] = {0x01,0x28};
+
+	if( UUID_TYPE_16BIT != uuidType )
+	{
+		return 0;
+	}
+	if( memcmp(pu1Uuid, pu1PrimarySrvUuid, uuidType)!=0 && memcmp(pu1Uuid, pu1SecondSSrvUuid, uuidType)!=0 )
+	{
+		return 0;
+	}
+
+	return 1;
+}
+static u1 GetUuidFormat(u1 uuidType)
+{
+	if( UUID_TYPE_128BIT == uuidType )
+	{
+		return UUID_FORMAT_128BIT;
+	}
+	return UUID_FORMAT_16BIT;
+}
 
 /**
  *@brief: 		AttErrRsp
@@ -129,7 +159,7 @@ __INLINE static u4 AttMtuRsp(u2 MTU)
 	return DH_SUCCESS;
 }
 
-__INLINE static u4 ReadByGroupTypeRsp(u1 *pu1AttList, u1 len)
+__INLINE static u4 AttReadByGroupTypeRsp(u1 *pu1AttList, u1 len)
 {
 	u1	index = 0;
 	u1	pu1Rsp[BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH-BLE_L2CAP_HEADER_LEN];
@@ -146,7 +176,7 @@ __INLINE static u4 ReadByGroupTypeRsp(u1 *pu1AttList, u1 len)
 	return DH_SUCCESS;
 }
 
-__INLINE static u4 ReadByTypeRsp(u1 *pu1AttList, u1 len)
+__INLINE static u4 AttReadByTypeRsp(u1 *pu1AttList, u1 len)
 {
 	u1	index = 0;
 	u1	pu1Rsp[BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH-BLE_L2CAP_HEADER_LEN];
@@ -163,7 +193,7 @@ __INLINE static u4 ReadByTypeRsp(u1 *pu1AttList, u1 len)
 	return DH_SUCCESS;
 }
 
-__INLINE static u4 FindInfoRsp(u1 format, u1 *pu1InfoRsp, u1 len)
+__INLINE static u4 AttFindInfoRsp(u1 format, u1 *pu1InfoRsp, u1 len)
 {
 	u1 index = 0;
 	u1	pu1Rsp[BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH-BLE_L2CAP_HEADER_LEN];
@@ -179,17 +209,108 @@ __INLINE static u4 FindInfoRsp(u1 format, u1 *pu1InfoRsp, u1 len)
 	}	return index;
 }
 
+
 static u4 AttFindInfoReqHandle(u1  *pu1Req, u1 len)
 {
-	BlkAttributeValue *pblkAtt;
+	BlkBleAttribute *pblkAtt;
+	u2	u2StartHandle;
+	u2	u2EndHandle;
+	u2	u2AttHandle;
+	u1	index = 0;
 	u4	ret;
+	u1	uuidFormat;
+	u1	pu1Rsp[BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH-BLE_L2CAP_HEADER_LEN];
+	u1	rspLen = 0;
+	
+	u2StartHandle = pu1Req[index++];
+	u2StartHandle += (pu1Req[index++]<<8)&0xff00;
+	u2EndHandle = pu1Req[index++];
+	u2EndHandle += (pu1Req[index++]<<8)&0xff00;
 	if ( ATT_FIND_INFO_REQ_LEN != len )
 	{
-		return ERR_ATT_INVALID_PDU;
+		ret = AttErrRsp(ATT_OPCODE_FIND_INFO_REQ, u2StartHandle, ATT_ERR_INVALID_PDU);
+		return ret;
 	}
-	pblkAtt = BleGattFindAttByHandle()
+
+	if( ATT_INVALID_HANDLE==u2StartHandle || u2StartHandle>u2EndHandle )
+	{
+		ret = AttErrRsp(ATT_OPCODE_FIND_INFO_REQ, u2StartHandle,ATT_ERR_INVALID_HANDLE);
+		return ret;
+	}
+	
+	for( u2AttHandle=u2StartHandle; u2AttHandle <= u2EndHandle; u2AttHandle++ )
+	{
+		BleGattFindAttByHandle(u2AttHandle, &pblkAtt);
+		if ( NULL != pblkAtt )
+		{
+			if( u2AttHandle == u2StartHandle )
+			{
+				uuidFormat = GetUuidFormat(pblkAtt->attType.uuidType);
+			}
+			else
+			{	
+				/* find information 的响应中只能放同一类型的uuid */
+				if( GetUuidFormat(pblkAtt->attType.uuidType) != uuidFormat )
+				{
+					return AttFindInfoRsp(uuidFormat, pu1Rsp, rspLen);					
+				}
+			}
+			pu1Rsp[rspLen++] = u2AttHandle&0xff;
+			pu1Rsp[rspLen++] = (u2AttHandle>>8)&0xff;
+			memcpy(pu1Rsp+rspLen, pblkAtt->attType.pu1Uuid; pblkAtt->attType.uuidType);
+			/* uuid的类型实际值就是UUID的长度 */
+			rspLen += pblkAtt->attType.uuidType;
+			
+		}
+		else	/* pblk==NULL */
+		{
+			if ( u2AttHandle == u2StartHandle )
+			{
+				return AttErrRsp(ATT_OPCODE_FIND_INFO_REQ, u2AttHandle, ATT_ERR_ATTRIBUTE_NOT_FOUND);
+			}
+			return AttFindInfoRsp(uuidFormat, pu1Rsp, rspLen);					
+		}
+	}
+
+	return DH_SUCCESS;
 }
 
+static u4 AttReadGroupTypeReqHandle(u1 *pu1Req, u1 len)
+{
+	BlkBleAttribute *pblkAtt;
+	u1	index = 0;
+	u1	rspLen = 0;
+	u2	u2StartHandle;
+	u2	u2EndHandle;
+	u2	u2AttHandle;
+	u1	uuidType;
+	u1	pu1GroupType[UUID_TYPE_128BIT];
+
+	u2StartHandle = pu1Req[index++];
+	u2StartHandle += (pu1Req[index++]<<8)&0xff;
+	u2EndHandle = pu1Req[index++];
+	u2EndHandle += (pu1Req[index++]<<8)&0xff;
+
+	if( ATT_READ_GROUP_TYPE_REQ_LEN1!=len && ATT_READ_GROUP_TYPE_REQ_LEN2!=len )
+	{
+		AttErrRsp(ATT_OPCODE_READ_BY_GROUP_TYPE_REQ, );
+	}
+	if( ATT_READ_GROUP_TYPE_REQ_LEN1 == len )
+	{
+		uuidType = UUID_TYPE_16BIT;
+	}
+	else
+	{
+		uuidType = UUID_TYPE_128BIT;
+	}
+	memcpy(pu1GroupType, pu1Req+index, uuidType);
+	if( CheckGroupType(pu1GroupType, uuidType) != 0 )
+	{
+		AttErrRsp(ATT_OPCODE_READ_BY_GROUP_TYPE_REQ, u2StartHandle, ATT_ERR_UNSUPPORTED_GROUP_TYPE);
+	}
+	
+	
+}
 /**
  *@brief: 		BleAttHandle
  *@details:		ATT协议数据处理，目前不支持带认证签名

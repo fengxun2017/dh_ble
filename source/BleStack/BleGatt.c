@@ -119,17 +119,30 @@ u4	BleGattInfoInit(void)
 
 u4	BleGattFindAttByHandle(u2 u2Handle, BlkBleAttribute **ppblkAtt)
 {
+	*ppblkAtt = NULL;
 	/* 	att handle要求从1开始*/
-	if( (0==u2Handle) || (u2Handle>s_blkBleGattInfo.u2AttCount) )
+	if( 0==u2Handle )
 	{
-		*ppblkAtt = NULL;
 		return ERR_GATT_INVALID_HANDLE;
+	}
+	/* 句柄允许到0xFFFF */
+	if( u2Handle > s_blkBleGattInfo.u2AttCount )
+	{
+		return ERR_GATT_NOT_FIND_ATT;
 	}
 	/* GATT层查找是从数组中查找，是从下标0开始的 */
 	u2Handle -= 1;
 	*ppblkAtt = &s_blkBleGattInfo.blkBleServiceSets[u2Handle];
 
 	return DH_SUCCESS;
+}
+
+u4 BleGattGetHandleByAtt(BlkBleAttribute *pblkAtt)
+{
+	if( NULL != pblkAtt )
+	{
+		return 
+	}
 }
 /**
  *@brief: 		BleGattFindAttByType
@@ -149,9 +162,10 @@ u4 BleGattFindAttByType(u2 u2StartHandle, u2 u2EndHandle, u1 *pu1UUID, u1 UUIDTy
 	u2	u2Index;
 	u1	*pu1AttUUID;
 	u1	AttUUIDType;
+
+	*ppblkAtt = NULL;
 	if( (0==u2StartHandle) || (u2StartHandle>u2EndHandle) )
 	{
-		*ppblkAtt = NULL;
 		return ERR_GATT_INVALID_HANDLE;
 	}
 
@@ -166,6 +180,5 @@ u4 BleGattFindAttByType(u2 u2StartHandle, u2 u2EndHandle, u1 *pu1UUID, u1 UUIDTy
 			return DH_SUCCESS;
 		}
 	}
-	*ppblkAtt = NULL;
 	return ERR_GATT_NOT_FIND_ATT;
 }
