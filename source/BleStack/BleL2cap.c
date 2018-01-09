@@ -6,7 +6,6 @@
 */
 #include "../../include/DhGlobalHead.h"
 
-#define L2CAP_HEADER_LEN			0x04
 
 /**
  *@brief: 		BleL2capPackage
@@ -73,7 +72,7 @@ u4 BleL2capHandle(u1 *pu1Data, u2 u2length)
 	switch(u2ChannelId)
 	{
 		case BLE_L2CAP_ATT_CHANNEL_ID:
-			BleAttHandle(pu1Data+L2CAP_HEADER_LEN, u2PayloadLen);
+			BleAttHandle(pu1Data+BLE_L2CAP_HEADER_LEN, u2PayloadLen);
 		break;
 
 		case BLE_L2CAP_SM_CHANNEL_ID:

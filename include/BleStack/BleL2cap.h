@@ -8,6 +8,8 @@
 #define __BLEL2CAP_H__
 #include "../DhGlobalHead.h"
 
+#define BLE_L2CAP_HEADER_LEN			0x04
+
 /* BLE只支持3个通道 */
 #define BLE_L2CAP_ATT_CHANNEL_ID			0x0004
 #define BLE_L2CAP_SM_CHANNEL_ID				0x0006
