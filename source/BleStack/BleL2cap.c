@@ -26,7 +26,7 @@ u4 BleL2capDataSend(u2 u2ChannelId,  u1 *pu1Data, u2 len)
 	{
 		return ERR_L2CAP_INVALID_PARAM;		
 	}
-	if ( (len+L2CAP_HEADER_LEN) > (BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH) )
+	if ( (len+BLE_L2CAP_HEADER_LEN) > (BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH) )
 	{
 		return ERR_L2CAP_INVALID_LENGTH;
 	}

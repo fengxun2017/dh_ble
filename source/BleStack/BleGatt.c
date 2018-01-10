@@ -138,13 +138,6 @@ u4	BleGattFindAttByHandle( u2 u2Handle, BlkBleAttribute **ppblkAtt )
     return DH_SUCCESS;
 }
 
-u4 BleGattGetHandleByAtt( BlkBleAttribute *pblkAtt )
-{
-    if( NULL != pblkAtt )
-    {
-        return
-    }
-}
     /**
      *@brief: 		BleGattFindAttByType
      *@details:		通过UUID查找属性

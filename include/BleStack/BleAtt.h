@@ -15,7 +15,7 @@ typedef struct
 
 typedef struct
 {
-	u2	u2AttSize;				/* 属性的大小*/
+	u2	u2MaxSize;				/* 属性的大小*/
 	u2	u2CurrentLen;			/* 属性值的当前长度*/
 	u1	*pu1AttValue;			/* 具体属性值*/
 }BlkAttributeValue;

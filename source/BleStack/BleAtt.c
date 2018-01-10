@@ -180,9 +180,9 @@ __INLINE static u4 AttMtuRsp( u2 MTU )
 
  *@retval:		DH_SUCCESS
  */
-__INLINE static u4 AttReadByGroupTypeRsp(u1 eachAttDataLen, u1 *pu1AttList, u1 len )
+__INLINE static u4 AttReadByGroupTypeRsp(u1 eachAttDataLen, u1 *pu1AttList, u2 len )
 {
-    u1	index = 0;
+    u2	index = 0;
     u1	pu1Rsp[BLE_ATT_MTU_SIZE];
 
     if( len > ( BLE_ATT_MTU_SIZE - 2 ) || NULL == pu1AttList )
@@ -210,9 +210,9 @@ __INLINE static u4 AttReadByGroupTypeRsp(u1 eachAttDataLen, u1 *pu1AttList, u1 l
 
  *@retval:		DH_SUCCESS
  */
-__INLINE static u4 AttReadByTypeRsp(u1 eachAttDataLen, u1 *pu1AttList, u1 len )
+__INLINE static u4 AttReadByTypeRsp(u1 eachAttDataLen, u1 *pu1AttList, u2 len )
 {
-    u1	index = 0;
+    u2	index = 0;
     u1	pu1Rsp[BLE_ATT_MTU_SIZE];
 
     if( len > ( BLE_ATT_MTU_SIZE - 2 ) || NULL == pu1AttList )
@@ -220,7 +220,7 @@ __INLINE static u4 AttReadByTypeRsp(u1 eachAttDataLen, u1 *pu1AttList, u1 len )
         return ERR_ATT_INVALID_PARAMS;
     }
     pu1Rsp[index++] = ATT_OPCODE_READ_BY_TYPE_RSP;
-    pu1Rsp[index++] = len;
+    pu1Rsp[index++] = eachAttDataLen;
     memcpy( pu1Rsp + index, pu1AttList, len );
     index += len;
 
@@ -240,9 +240,9 @@ __INLINE static u4 AttReadByTypeRsp(u1 eachAttDataLen, u1 *pu1AttList, u1 len )
 
  *@retval:		DH_SUCCESS
  */
-__INLINE static u4 AttFindInfoRsp( u1 format, u1 *pu1InfoRsp, u1 len )
+__INLINE static u4 AttFindInfoRsp( u1 format, u1 *pu1InfoRsp, u2 len )
 {
-    u1 index = 0;
+    u2  index = 0;
     u1	pu1Rsp[BLE_ATT_MTU_SIZE];
 
     if( len > ( BLE_ATT_MTU_SIZE - 2 ) || NULL == pu1InfoRsp )
@@ -258,7 +258,40 @@ __INLINE static u4 AttFindInfoRsp( u1 format, u1 *pu1InfoRsp, u1 len )
     {
         return ERR_ATT_SEND_RSP_FAILED;
     }
-    return index;
+    return DH_SUCCESS;
+}
+
+__INLINE static u4 AttReadRsp(u1 *pu1AttValue, u2 len)
+{
+    u2  index = 0;
+    u1  pu1Rsp[BLE_ATT_MTU_SIZE];
+
+    if( NULL==pu1AttValue || (len+1)>BLE_ATT_MTU_SIZE )
+    {
+        return ERR_ATT_INVALID_PARAMS;
+    }
+
+    pu1Rsp[index++] = ATT_OPCODE_READ_RSP;
+    memcpy(pu1Rsp+index, pu1AttValue, len);
+    index += len;
+    
+    if( BleL2capDataSend( BLE_L2CAP_ATT_CHANNEL_ID, pu1Rsp, index ) != DH_SUCCESS )
+    {
+        return ERR_ATT_SEND_RSP_FAILED;
+    }
+    return DH_SUCCESS;
+}
+
+__INLINE static u4 AttWriteRsp(void)
+{
+    u1  opcode;
+
+    opcode = ATT_OPCODE_WRITE_RSP;
+    if( BleL2capDataSend( BLE_L2CAP_ATT_CHANNEL_ID, &opcode, 1 ) != DH_SUCCESS )
+    {
+        return ERR_ATT_SEND_RSP_FAILED;
+    }
+    return DH_SUCCESS;
 }
 
 /**
@@ -269,12 +302,12 @@ __INLINE static u4 AttFindInfoRsp( u1 format, u1 *pu1InfoRsp, u1 len )
 
  *@retval:		DH_SUCCESS
  */
-static u4 AttFindInfoReqHandle( u1  *pu1Req, u1 len )
+static u4 AttFindInfoReqHandle( u1  *pu1Req, u2 len )
 {
     BlkBleAttribute *pblkAtt;
-    u2	u2StartHandle;
-    u2	u2EndHandle;
-    u2	u2AttHandle;
+    u2	u2StartHandle = ATT_INVALID_HANDLE;
+    u2	u2EndHandle = ATT_INVALID_HANDLE;
+    u2	u2AttHandle = ATT_INVALID_HANDLE;
     u1	index = 0;
     u4	ret;
     u1	uuidFormat;
@@ -347,7 +380,7 @@ static u4 AttFindInfoReqHandle( u1  *pu1Req, u1 len )
 
  *@retval:		DH_SUCCESS
  */
-static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u1 len )
+static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
 {
     BlkBleAttribute *pblkAtt;
     u1	index = 0;
@@ -356,9 +389,9 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u1 len )
     u1	pu1Rsp[BLE_ATT_MTU_SIZE - 2]; /* 去掉opcode和length所占字节 */
     u1	pu1AttValue[BLE_ATT_MTU_SIZE - 2 - 4]; /* Attribute Data List 响应格式为AttHandle(2B) EndGroupHandle(2B) AttValue */
     u1  u1AttValueLen = 0;
-    u2	u2StartHandle;
-    u2	u2EndHandle;
-    u2	u2AttHandle;
+    u2	u2StartHandle = ATT_INVALID_HANDLE;
+    u2	u2EndHandle = ATT_INVALID_HANDLE;
+    u2	u2AttHandle = ATT_INVALID_HANDLE;
     u2	u2GroupEndHandle = ATT_INVALID_HANDLE;
     u2  u2GroupStartHandle = ATT_INVALID_HANDLE;
     u1	uuidType = 0;
@@ -456,7 +489,7 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u1 len )
 
  *@retval:		DH_SUCCESS
  */
-static u4 AttReadByTypeReqHandle( u1 *pu1Req, u1 len )
+static u4 AttReadByTypeReqHandle( u1 *pu1Req, u2 len )
 {
     BlkBleAttribute *pblkAtt;
     u1	index = 0;
@@ -465,9 +498,9 @@ static u4 AttReadByTypeReqHandle( u1 *pu1Req, u1 len )
     u1	pu1Rsp[BLE_ATT_MTU_SIZE - 2];           // 去掉opcode和length所占字节
     u1	pu1AttValue[BLE_ATT_MTU_SIZE - 2 - 2];  // Attribute Data List 响应格式为AttHandle AttValue
     u1  u1AttValueLen = 0;
-    u2	u2StartHandle;
-    u2	u2EndHandle;
-    u2	u2AttHandle;
+    u2	u2StartHandle = ATT_INVALID_HANDLE;
+    u2	u2EndHandle = ATT_INVALID_HANDLE;
+    u2	u2AttHandle = ATT_INVALID_HANDLE;
     u1	uuidType = 0;
     u1	pu1FindType[UUID_TYPE_128BIT];
 
@@ -536,8 +569,13 @@ static u4 AttReadByTypeReqHandle( u1 *pu1Req, u1 len )
     }
     return DH_SUCCESS;
 }
-static u4 AttReadReqHandle(u1 *pu1Req, u1 len)
+
+
+static u4 AttReadReqHandle(u1 *pu1Req, u2 len)
 {
+    BlkBleAttribute *pblkAtt;
+    u1  pu1AttValue[BLE_ATT_MTU_SIZE-1];    // 去掉opcode所占字节
+    u2  u2AttValueLen = ATT_INVALID_HANDLE;
     u2  u2AttHandle = ATT_INVALID_HANDLE;
     u1  index = 0;
     if( NULL == pu1Req )
@@ -547,14 +585,97 @@ static u4 AttReadReqHandle(u1 *pu1Req, u1 len)
 
     u2AttHandle = pu1Req[index++];
     u2AttHandle += (pu1Req[index++]<<8)&0xFF00;
-    
     if( ATT_READ_REQ_LEN != len )
     {
         return AttErrRsp( ATT_OPCODE_READ_REQ, u2AttHandle, ATT_ERR_INVALID_PDU);
     }
+    
+    BleGattFindAttByHandle(u2AttHandle, &pblkAtt);
+    if( NULL == pblkAtt )
+    {
+        AttErrRsp(ATT_OPCODE_READ_REQ, u2AttHandle, ATT_ERR_INVALID_HANDLE);
+    }
+    /* 只返回ATT_MTU-1 长度的内容，如果有剩余内容，client可以通过Read Blob Request 获取 */
+    u2AttValueLen = (pblkAtt->attValue.u2CurrentLen>sizeof(pu1AttValue))?sizeof(pu1AttValue):pblkAtt->attValue.u2CurrentLen;
+    memcpy(pu1AttValue, pblkAtt->attValue.pu1AttValue, u2AttValueLen);
+
+    return AttReadRsp(pu1AttValue, u2AttValueLen);
 }
 
+static u4 AttWriteCommandHandle(u1 *pu1Req, u2 len)
+{
+    BlkBleAttribute *pblkAtt = NULL;
+    u2  u2AttHandle = ATT_INVALID_HANDLE;
+    u2  u2ValueLen;
+    u1  index = 0;
 
+    if( NULL==pu1Req )
+    {
+        return ERR_ATT_INVALID_PARAMS;
+    }
+    u2ValueLen = len-2;         // 减去handle所占字节
+        /* opcode handle 占3字节 */
+    if( u2ValueLen > (BLE_ATT_MTU_SIZE-3) )
+    {
+        /* 忽略该命令，直接返回 */
+        return DH_SUCCESS;
+    }
+    u2AttHandle = pu1Req[index++]&0xff;
+    u2AttHandle += (pu1Req[index++]<<8)&0xff00;
+
+    BleGattFindAttByHandle(u2AttHandle, &pblkAtt);
+    if( NULL != pblkAtt )
+    {
+        /* valueLen > attMaxlen，则写请求直接忽略*/
+        if( u2ValueLen <= pblkAtt->attValue.u2MaxSize )
+        {
+            memcpy(pblkAtt->attValue.pu1AttValue, pu1Req+index, u2ValueLen);
+            pblkAtt->attValue.u2CurrentLen = u2ValueLen;
+        }                                                                               
+    }
+    return DH_SUCCESS;
+}
+
+static u4 AttWriteReqHandle(u1* pu1Req, u2 len)
+{
+    BlkBleAttribute *pblkAtt = NULL;
+    u2  u2AttHandle = ATT_INVALID_HANDLE;
+    u2  u2ValueLen;
+    u1  index = 0;
+
+    if( NULL==pu1Req )
+    {
+        return ERR_ATT_INVALID_PARAMS;
+    }
+    u2ValueLen = len-2;         // 减去handle所占字节
+        /* opcode handle 占3字节 */
+    if( u2ValueLen > (BLE_ATT_MTU_SIZE-3) )
+    {
+        /* 忽略该命令，直接返回 */
+        return DH_SUCCESS;
+    }
+    u2AttHandle = pu1Req[index++]&0xff;
+    u2AttHandle += (pu1Req[index++]<<8)&0xff00;
+
+    BleGattFindAttByHandle(u2AttHandle, &pblkAtt);
+    if( NULL != pblkAtt )
+    {
+        if( u2ValueLen <= pblkAtt->attValue.u2MaxSize )
+        {
+            memcpy(pblkAtt->attValue.pu1AttValue, pu1Req+index, u2ValueLen);
+            pblkAtt->attValue.u2CurrentLen = u2ValueLen;
+        }
+        else
+        {
+            return AttErrRsp(ATT_OPCODE_WRITE_REQ, u2AttHandle, ATT_ERR_INVALID_ATTRIBUTE_VALUE_LEN);
+        }
+    }
+    else
+    {
+        return AttErrRsp(ATT_OPCODE_WRITE_REQ, u2AttHandle, ATT_ERR_INVALID_HANDLE);
+    }
+    return AttWriteRsp();
+}
 /**
  *@brief: 		BleAttHandle
  *@details:		ATT协议请求数据处理，目前不支持带认证签名
