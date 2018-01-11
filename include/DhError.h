@@ -34,4 +34,5 @@
 #define ERR_ATT_BASE						(0xF900000000)
 #define ERR_ATT_SEND_RSP_FAILED				(0x000001)
 #define ERR_ATT_INVALID_PARAMS              (0x000002)
+#define ERR_ATT_NOT_FIND                    (0x000003)
 

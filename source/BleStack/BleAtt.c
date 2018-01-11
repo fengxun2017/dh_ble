@@ -93,6 +93,8 @@
 #define ATT_READ_BY_TYPE_REQ_SHORT              (6)     /* 去除opcode后的长度 */
 #define ATT_READ_BY_TYPE_REQ_LONG               (20)    /* 去除opcode后的长度 */
 #define ATT_READ_REQ_LEN                        (2)     /* 去除opcode后的长度 */
+
+
 static u1 CheckGroupType( u1 *pu1Uuid, u1 uuidType )
 {
     u1	pu1PrimarySrvUuid[] = {0x00, 0x28};
@@ -485,7 +487,7 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
  *@brief: 		AttReadByTypeReqHandle
  *@details:		处理 read by type request
  *@param[in]	pu1Req  请求数据，去除了opcode
- *@param[in]	len     请求数据长度      
+ *@param[in]	len     请求数据长度     
 
  *@retval:		DH_SUCCESS
  */
@@ -570,7 +572,14 @@ static u4 AttReadByTypeReqHandle( u1 *pu1Req, u2 len )
     return DH_SUCCESS;
 }
 
+/**
+ *@brief: 		AttReadReqHandle
+ *@details:		处理 att read request
+ *@param[in]	pu1Req  请求数据，去除了opcode
+ *@param[in]	len     请求数据长度      
 
+ *@retval:		DH_SUCCESS
+ */
 static u4 AttReadReqHandle(u1 *pu1Req, u2 len)
 {
     BlkBleAttribute *pblkAtt;
@@ -602,6 +611,14 @@ static u4 AttReadReqHandle(u1 *pu1Req, u2 len)
     return AttReadRsp(pu1AttValue, u2AttValueLen);
 }
 
+/**
+ *@brief: 		AttWriteCommandHandle
+ *@details:		处理att write command
+ *@param[in]	pu1Req  请求数据，去除了opcode
+ *@param[in]	len     请求数据长度      
+
+ *@retval:		DH_SUCCESS
+ */
 static u4 AttWriteCommandHandle(u1 *pu1Req, u2 len)
 {
     BlkBleAttribute *pblkAtt = NULL;
@@ -636,6 +653,14 @@ static u4 AttWriteCommandHandle(u1 *pu1Req, u2 len)
     return DH_SUCCESS;
 }
 
+/**
+ *@brief: 		AttWriteReqHandle
+ *@details:		处理att write request
+ *@param[in]	pu1Req  请求数据，去除了opcode
+ *@param[in]	len     请求数据长度
+
+ *@retval:		DH_SUCCESS
+ */
 static u4 AttWriteReqHandle(u1* pu1Req, u2 len)
 {
     BlkBleAttribute *pblkAtt = NULL;
@@ -676,6 +701,11 @@ static u4 AttWriteReqHandle(u1* pu1Req, u2 len)
     }
     return AttWriteRsp();
 }
+
+static u4 AttIndicationConfirm(void)
+{
+    
+}
 /**
  *@brief: 		BleAttHandle
  *@details:		ATT协议请求数据处理，目前不支持带认证签名
@@ -683,9 +713,95 @@ static u4 AttWriteReqHandle(u1* pu1Req, u2 len)
  *@param[in]	len			数据长度
  *@retval:		DH_SUCCESS
  */
-u4 BleAttHandle( u1 *pu1Data, u2 len )
+u4 BleAttReqHandle( u1 *pu1Data, u2 len )
 {
     u1	opcode;
 
     opcode = pu1Data[0];
 }
+
+/**
+ *@brief: 		BleAttSendNotify
+ *@details:		以notify方式发送属性值数据
+ *@param[in]	u2AttHandle     属性句柄
+ *@param[in]	pu1AttValue     属性值
+ *@param[in]	len             数据长度
+
+ *@retval:		DH_SUCCESS
+ */
+u4 BleAttSendNotify(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
+{
+    BlkBleAttribute *pblkAtt;
+    u1  pu1Notify[BLE_ATT_MTU_SIZE];
+    u2  index = 0;
+    u2  u2ValueLen = 0;
+    if( NULL==pu1AttValue || len>(BLE_ATT_MTU_SIZE-3) )
+    {
+        return ERR_ATT_INVALID_PARAMS;
+    }
+    pu1Notify[index++] = ATT_OPCODE_NOTIFY;
+    pu1Notify[index++] = u2AttHandle&0xff;
+    pu1Notify[index++] = (u2AttHandle>>8)&0xff;
+    BleGattFindAttByHandle(u2AttHandle, &pblkAtt);
+    if( NULL == pblkAtt )
+    {
+        return ERR_ATT_NOT_FIND;
+    }
+    u2ValueLen = (len>(BLE_ATT_MTU_SIZE-3))?(BLE_ATT_MTU_SIZE-3):len;
+    memcpy(pu1Notify+index, pu1AttValue, u2ValueLen);
+    index += u2ValueLen;
+    /* 同时也要更新属性值 */
+    memcpy(pblkAtt->attValue.pu1AttValue, pu1AttValue, u2ValueLen);
+    
+    if( BleL2capDataSend( BLE_L2CAP_ATT_CHANNEL_ID, &pu1Notify, index ) != DH_SUCCESS )
+    {
+        return ERR_ATT_SEND_RSP_FAILED;
+    }
+    
+    return DH_SUCCESS;    
+}
+/**
+ *@brief: 		BleAttSendIndication
+ *@details:		以indication方式发送属性值数据 
+ *@param[in]	u2AttHandle     属性句柄
+ *@param[in]	pu1AttValue     属性值
+ *@param[in]	len             数据长度
+
+ *@retval:		DH_SUCCESS
+ 
+ *@note         以indication方式发送数据，需要对方回confirm,如果没有收到上个indication回复的confirm，则不能
+                发送后续的indication.
+                PS:目前没有实现这个限制
+ */
+u4 BleAttSendIndication(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
+{
+    BlkBleAttribute *pblkAtt;
+    u1  pu1Indication[BLE_ATT_MTU_SIZE];
+    u2  index = 0;
+    u2  u2ValueLen = 0;
+    if( NULL==pu1AttValue || len>(BLE_ATT_MTU_SIZE-3) )
+    {
+        return ERR_ATT_INVALID_PARAMS;
+    }
+    pu1Indication[index++] = ATT_OPCODE_NOTIFY;
+    pu1Indication[index++] = u2AttHandle&0xff;
+    pu1Indication[index++] = (u2AttHandle>>8)&0xff;
+    BleGattFindAttByHandle(u2AttHandle, &pblkAtt);
+    if( NULL == pblkAtt )
+    {
+        return ERR_ATT_NOT_FIND;
+    }
+    u2ValueLen = (len>(BLE_ATT_MTU_SIZE-3))?(BLE_ATT_MTU_SIZE-3):len;
+    memcpy(pu1Indication+index, pu1AttValue, u2ValueLen);
+    index += u2ValueLen;
+    /* 同时也要更新属性值 */
+    memcpy(pblkAtt->attValue.pu1AttValue, pu1AttValue, u2ValueLen);
+    
+    if( BleL2capDataSend( BLE_L2CAP_ATT_CHANNEL_ID, pu1Indication, index ) != DH_SUCCESS )
+    {
+        return ERR_ATT_SEND_RSP_FAILED;
+    }
+    
+    return DH_SUCCESS;    
+}
+

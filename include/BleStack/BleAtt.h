@@ -58,7 +58,7 @@ extern "C"{
 #endif
 #endif /* __cplusplus */
 
-extern u4 BleAttHandle(u1 *pu1Data, u2 len);
+extern u4 BleAttReqHandle(u1 *pu1Data, u2 len);
 
 #ifdef __cplusplus
 #if __cplusplus
