@@ -56,7 +56,8 @@
 #define DATA_HEAD_MD_POS			(DATA_HEAD_SN_POS+DATA_HEAD_SN_LENGTH)
 #define DATA_HEAD_MD_LENGTH			(1)
 
-
+#define CHANNEL_MAP_UPDATING        (1) 
+#define CHANNEL_MAP_UPDATED         (0)
 typedef enum
 {
 	CONN_IDLE = 0,
@@ -122,8 +123,11 @@ SN,NESN: 响应机制。 收到的NESN是告诉自己对方有没有收到前一
 													如果延迟后没有收到主机包，则后续的每个连接事件都应该监听，知道收到数据包后才能再应用这个参数。*/
 	u2	m_u2ConnSupervisionTimeout;				/* 连接超时--10ms为单位，100 ms —— 32.0 s并且大于(1 + connSlaveLatency) * connInterval。连接建立过程如果超过6个connInterval时间，则认为建立失败 */
 	u2	m_u2ConnSupervisionTimeoutCounter;		/* 没有资源对超时单独创建定时器，超时时间不需要精确，这里用一个计数器，以connInterval为单位来计数*/
-	u1	m_pu1ChannelsMap[5];					/* 通道映射图，指示可用通道 ,LSB
+	u1	m_pu1ChannelMap[BLE_CHANNEL_MAP_LEN];	/* 通道映射图，指示可用通道 ,LSB
 													The LSB represents data channel index 0 and the bit in position 36 represents data channel index 36.*/
+	u1  m_pu1NewChannelMap[BLE_CHANNEL_MAP_LEN];
+	u1  m_u1ChannelMapUpdateInstant;            /* 更新channel map的时间点 */
+	u1  m_u1ChannelMapNeedUpdateFlag;           /* 收到LL_CHANNEL_MAP_REQ 后需要更新channelMap */
 	u1	m_pu1AccessAddress[BLE_ACC_ADDR_LENGTH];/* 接入地址,LSB*/
 	u1	m_pu1CrcInitValue[BLE_CRC_LENGTH];		/* CRC初值，LSB*/
 	u1	m_u1HopIncrement;						/* 跳频增量 */
@@ -158,6 +162,14 @@ __INLINE static void LinkConnSubStateSwitch(u1 enConnSubState)
 	s_blkConnStateInfo.m_enConnSubState = enConnSubState;
 }
 
+__INLINE static void UpdateChannelMap(void)
+{
+    if( CHANNEL_MAP_UPDATING == s_blkConnStateInfo.m_u1ChannelMapNeedUpdateFlag )
+    {
+        memcpy(s_blkConnStateInfo.m_pu1ChannelMap, s_blkConnStateInfo.m_pu1NewChannelMap, BLE_CHANNEL_MAP_LEN);
+        s_blkConnStateInfo.m_u1ChannelMapNeedUpdateFlag = CHANNEL_MAP_UPDATED;
+    }
+}
 /**
  *@brief: 		GetTimerDeviation
  *@details:		获取time时间下由于时钟精度导致的时间误差
@@ -241,7 +253,7 @@ __INLINE static u1 GetNextDataChannel(void)
 	/* 保存,更新lastUnmappedChannel的时候需要用到  */
 	s_blkConnStateInfo.m_u1UnmappedChannel = u1UnmappedChannel;
 	
-	if( s_blkConnStateInfo.m_pu1ChannelsMap[u1UnmappedChannel/8]&(1<<(u1UnmappedChannel%8)) )
+	if( s_blkConnStateInfo.m_pu1ChannelMap[u1UnmappedChannel/8]&(1<<(u1UnmappedChannel%8)) )
 	{
 		/* u1UnmappedChannel 通道号可以使用，则直接使用该值作为下一次连接事件时的数据通道 */
 	}
@@ -251,7 +263,7 @@ __INLINE static u1 GetNextDataChannel(void)
 		usedChannels = 0;
 		for( channelIndex = 0; channelIndex < BLE_DATA_CHANNEL_NUMBER; channelIndex++ )
 		{
-			if(s_blkConnStateInfo.m_pu1ChannelsMap[channelIndex/8]&(1<<(channelIndex%8)))
+			if(s_blkConnStateInfo.m_pu1ChannelMap[channelIndex/8]&(1<<(channelIndex%8)))
 			{
 				/* 如果该通道可用则放在重映射表中*/
 				pu1ReMapTable[usedChannels++] = channelIndex;
@@ -313,8 +325,10 @@ __INLINE static void ExtractRecvPacketSn(u1 &sn, u1 &nesn)
 __INLINE static void BleLinkDataHandle(void)
 {
 	BlkLinkToHostData	data;
-	u1	len;
 	BlkBlePduHeader *pHeader;
+    u1  pu1NewChannelMap[BLE_CHANNEL_MAP_LEN];	
+	u1	len;
+	u2  u2Instant;
 	
 	if( !IsBleRadioCrcOk() )
 	{
@@ -323,6 +337,24 @@ __INLINE static void BleLinkDataHandle(void)
 	}
 	pHeader = (BlkBlePduHeader *)LINK_CONN_STATE_RX_BUFF;
 	len = pHeader->m_u1Header2 & 0x1F;	
+
+    /* channelMap 更新控制过程需要单独特殊处理，不能延后软中断里面处理 */
+	if( DH_SUCCESS== CheckLinkChannelMapUpdate(LINK_CONN_STATE_RX_BUFF, pu1NewChannelMap, &u2Instant) )
+	{
+	    /* 相减最高位为1说明溢出了 */
+	    if( (u2Instant-s_blkConnStateInfo.m_u2ConnEventCounter) >= 32767)
+	    {
+            /*
+                做断开处理并通知上层
+            */
+	    }
+	    else
+	    {
+            memcpy(s_blkConnStateInfo.m_pu1NewChannelMap, pu1NewChannelMap, BLE_CHANNEL_MAP_LEN);
+            s_blkConnStateInfo.m_u1ChannelMapNeedUpdateFlag = CHANNEL_MAP_UPDATING;
+            s_blkConnStateInfo.m_u1ChannelMapUpdateInstant = u2Instant;
+        }
+	}
 	/* 非空包才处理*/
 	if( len>0 )
 	{
@@ -481,7 +513,15 @@ static void ConnStateRxPacketHandler(void *pValue)
 	u4	u4PassTimeDeviation;
 	static u4	u4WinSize;
 
-	/* 先设置本次连接事件所在的数据通道 */
+    if( CHANNEL_MAP_UPDATING==s_blkConnStateInfo.m_u1ChannelMapNeedUpdateFlag )
+    {
+        /* 更新 channel map的时间点到了 */
+        if( s_blkConnStateInfo.m_u2ConnEventCounter == s_blkConnStateInfo.m_u1ChannelMapUpdateInstant )
+        {
+            UpdateChannelMap();
+        }
+    }
+	/* 设置本次连接事件所在的数据通道 */
 	u1DataChannel  = GetNextDataChannel();
 	BleRadioWhiteIvCfg(u1DataChannel);
 	CfgCurrentDataChannel(u1DataChannel);
@@ -542,11 +582,19 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 	memcpy(s_blkConnStateInfo.m_pu1AccessAddress, pu1LLData+LLDATA_AA_POS, LLDATA_AA_SIZE);
 	memcpy(s_blkConnStateInfo.m_pu1CrcInitValue, pu1LLData+LLDATA_CRCINIT_POS, LLDATA_CRCINIT_SIZE);
 	s_blkConnStateInfo.m_u1TransmitWindowSize = pu1LLData[LLDATA_WINSIZE_POS];
+<<<<<<< HEAD
 	s_blkConnStateInfo.m_u2TransmitWindowOffset = pu1LLData[LLDATA_WINOFFSET_POS]+((pu1LLData[LLDATA_WINOFFSET_POS+1]<<8)&0xFF00);
 	s_blkConnStateInfo.m_u2ConnInterval = pu1LLData[LLDATA_INTERVAL_POS]+((pu1LLData[LLDATA_INTERVAL_POS+1]<<8)&0xFF00);
 	s_blkConnStateInfo.m_u2ConnSlaveLatency = pu1LLData[LLDATA_LATENCY_POS]+((pu1LLData[LLDATA_LATENCY_POS+1]<<8)&0xFF00);
 	s_blkConnStateInfo.m_u2ConnSupervisionTimeout = pu1LLData[LLDATA_TIMEOUT_POS]+((pu1LLData[LLDATA_TIMEOUT_POS+1]<<8)&0xFF00);
 	memcpy(s_blkConnStateInfo.m_pu1ChannelsMap, pu1LLData+LLDATA_CHM_POS, LLDATA_CHM_SIZE);
+=======
+	s_blkConnStateInfo.m_u2TransmitWindowOffset = pu1LLData[LLDATA_WINOFFSET_POS]+(pu1LLData[LLDATA_WINOFFSET_POS+1]<<8)&0xFF00;
+	s_blkConnStateInfo.m_u2ConnInterval = pu1LLData[LLDATA_INTERVAL_POS]+(pu1LLData[LLDATA_INTERVAL_POS+1]<<8)&0xFF00;
+	s_blkConnStateInfo.m_u2ConnSlaveLatency = pu1LLData[LLDATA_LATENCY_POS]+(pu1LLData[LLDATA_LATENCY_POS+1]<<8)&0xFF00;
+	s_blkConnStateInfo.m_u2ConnSupervisionTimeout = pu1LLData[LLDATA_TIMEOUT_POS]+(pu1LLData[LLDATA_TIMEOUT_POS+1]<<8)&0xFF00;
+	memcpy(s_blkConnStateInfo.m_pu1ChannelMap, pu1LLData+LLDATA_CHM_POS, LLDATA_CHM_SIZE);
+>>>>>>> 99d08a9c4d71a7608d768d16a57920673408abbf
 	s_blkConnStateInfo.m_u1HopIncrement = pu1LLData[LLDATA_HOP_SCA_POS]&0x1F;
 	s_blkConnStateInfo.m_u1PeerSCA = (pu1LLData[LLDATA_HOP_SCA_POS]>>5)&0x07;
 

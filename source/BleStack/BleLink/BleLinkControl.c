@@ -25,7 +25,7 @@
 	#define LL_VERSION_SIZE						0x05
 #define LL_REJECT_IND					0x0D
 
-#define FEATURE_SUPPORT_LE_ENCY_BIT					0x00
+#define FEATURE_SUPPORT_LE_ENCY         (1<<0x00)
 
 #define LL_VERSION_COMPID				(0xFFFF)
 #define LL_VERSION_VERSNR				(BLE_VERSION_NUMBER)
@@ -45,7 +45,7 @@ static u4 LinkFeatureReqHandle(u1	*pu1FearureSet, u2 len)
 	// 目前只支持4.0的加密而已,不用管对方的feature了
 	memset(rspData.m_pu1HostData, 0x00, BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH);
 	rspData.m_pu1HostData[0] = LL_FEATURE_RSP;
-	rspData.m_pu1HostData[1] |=  FEATURE_SUPPORT_LE_ENCY_BIT;
+	rspData.m_pu1HostData[1] |=  FEATURE_SUPPORT_LE_ENCY;
 	rspData.m_u1Length = LL_FEATURE_SET_SIZE + 1;	//opcode
 	// 链路控制目前也用这个接口好了
 	BleHostDataToLinkPush(rspData);
@@ -88,6 +88,37 @@ void LinkRspUnknown()
 	BleHostDataToLinkPush(rspData);
 }
 
+
+u4 CheckLinkChannelMapUpdate(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *u2Instant)
+{
+    u1  llid;
+    u1  opcode;
+    u2  len;
+    u1  index = 0;
+
+    if( NULL==pu1PDU || NULL==pu1NewChannelMap )
+    {
+        return ERR_LINK_INVALID_PARAMS;
+    }
+    
+    llid = pu1PDU[index++]&0x03;
+    len = pu1PDU[index++]&0x1f;
+    if ( LLID_CONTROL==llid && len>0 )
+    {
+        opcode = pu1PDU[index++];
+        if( LL_CHANNEL_MAP_REQ == opcode )
+        {
+            memcpy(pu1NewChannelMap, pu1PDU+index, BLE_CHANNEL_MAP_LEN)；
+            index += BLE_CHANNEL_MAP_LEN;
+            *u2Instant = pu1PDU[index++];
+            *u2Instant += (pu1PDU[index++]<<8)&0xff00;
+
+            return DH_SUCCESS;
+        }
+    }
+
+    return ERR_LINK_NOT_CHANNEL_MAP_REQ;
+}
 u4 BleLinkControlHandle(u1 *pu1Data, u2 len)
 {
 	u1	opcode;
