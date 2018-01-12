@@ -62,13 +62,13 @@ u4 BleL2capHandle(u1 *pu1Data, u2 u2length)
 	{
 		return ERR_L2CAP_INVALID_PARAM;
 	}
-	u2PayloadLen = pu1Data[0]+(pu1Data[1]<<8)&0xFF00;
+	u2PayloadLen = pu1Data[0]+((pu1Data[1]<<8)&0xFF00);
 	if( (u2PayloadLen+0x04) != u2length )
 	{
 		return ERR_L2CAP_INVALID_LENGTH;
 	}
 	
-	u2ChannelId = pu1Data[2]+ (pu1Data[3]<<8)&0xFF00;
+	u2ChannelId = pu1Data[2]+ ((pu1Data[3]<<8)&0xFF00);
 	switch(u2ChannelId)
 	{
 		case BLE_L2CAP_ATT_CHANNEL_ID:

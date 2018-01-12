@@ -542,10 +542,10 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 	memcpy(s_blkConnStateInfo.m_pu1AccessAddress, pu1LLData+LLDATA_AA_POS, LLDATA_AA_SIZE);
 	memcpy(s_blkConnStateInfo.m_pu1CrcInitValue, pu1LLData+LLDATA_CRCINIT_POS, LLDATA_CRCINIT_SIZE);
 	s_blkConnStateInfo.m_u1TransmitWindowSize = pu1LLData[LLDATA_WINSIZE_POS];
-	s_blkConnStateInfo.m_u2TransmitWindowOffset = pu1LLData[LLDATA_WINOFFSET_POS]+(pu1LLData[LLDATA_WINOFFSET_POS+1]<<8)&0xFF00;
-	s_blkConnStateInfo.m_u2ConnInterval = pu1LLData[LLDATA_INTERVAL_POS]+(pu1LLData[LLDATA_INTERVAL_POS+1]<<8)&0xFF00;
-	s_blkConnStateInfo.m_u2ConnSlaveLatency = pu1LLData[LLDATA_LATENCY_POS]+(pu1LLData[LLDATA_LATENCY_POS+1]<<8)&0xFF00;
-	s_blkConnStateInfo.m_u2ConnSupervisionTimeout = pu1LLData[LLDATA_TIMEOUT_POS]+(pu1LLData[LLDATA_TIMEOUT_POS+1]<<8)&0xFF00;
+	s_blkConnStateInfo.m_u2TransmitWindowOffset = pu1LLData[LLDATA_WINOFFSET_POS]+((pu1LLData[LLDATA_WINOFFSET_POS+1]<<8)&0xFF00);
+	s_blkConnStateInfo.m_u2ConnInterval = pu1LLData[LLDATA_INTERVAL_POS]+((pu1LLData[LLDATA_INTERVAL_POS+1]<<8)&0xFF00);
+	s_blkConnStateInfo.m_u2ConnSlaveLatency = pu1LLData[LLDATA_LATENCY_POS]+((pu1LLData[LLDATA_LATENCY_POS+1]<<8)&0xFF00);
+	s_blkConnStateInfo.m_u2ConnSupervisionTimeout = pu1LLData[LLDATA_TIMEOUT_POS]+((pu1LLData[LLDATA_TIMEOUT_POS+1]<<8)&0xFF00);
 	memcpy(s_blkConnStateInfo.m_pu1ChannelsMap, pu1LLData+LLDATA_CHM_POS, LLDATA_CHM_SIZE);
 	s_blkConnStateInfo.m_u1HopIncrement = pu1LLData[LLDATA_HOP_SCA_POS]&0x1F;
 	s_blkConnStateInfo.m_u1PeerSCA = (pu1LLData[LLDATA_HOP_SCA_POS]>>5)&0x07;
@@ -563,11 +563,11 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 	LinkConnSubStateSwitch(CONN_CONNING_RX);	// 切换连接连接子状态到连接中状态。
 
 	/* 设置连接过程中的CRC计算初值*/
-	u4CrcIV = pu1LLData[LLDATA_CRCINIT_POS] + (pu1LLData[LLDATA_CRCINIT_POS+1]<<8)&0xFF00 + (pu1LLData[LLDATA_CRCINIT_POS+2]<<16)&0xFF0000;
+	u4CrcIV = pu1LLData[LLDATA_CRCINIT_POS] + ((pu1LLData[LLDATA_CRCINIT_POS+1]<<8)&0xFF00) + ((pu1LLData[LLDATA_CRCINIT_POS+2]<<16)&0xFF0000);
 	BleRadioCrcInit(u4CrcIV);
 
 	/* 设置该连接使用的接入地址 */
-	u4AccAddr = pu1LLData[LLDATA_AA_POS] + (pu1LLData[LLDATA_AA_POS+1]<<8)&0xFF00 + (pu1LLData[LLDATA_AA_POS+2]<<16)&0xFF0000 + (pu1LLData[LLDATA_AA_POS+3]<<24)&0xFF000000;
+	u4AccAddr = pu1LLData[LLDATA_AA_POS] + ((pu1LLData[LLDATA_AA_POS+1]<<8)&0xFF00) + ((pu1LLData[LLDATA_AA_POS+2]<<16)&0xFF0000) + ((pu1LLData[LLDATA_AA_POS+3]<<24)&0xFF000000);
 	BleRadioTxRxAddrCfg(0, u4AccAddr);	// 都是只支持一个连接，所以直接用逻辑0地址
 	
 	/*
