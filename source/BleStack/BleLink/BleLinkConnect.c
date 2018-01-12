@@ -582,19 +582,11 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 	memcpy(s_blkConnStateInfo.m_pu1AccessAddress, pu1LLData+LLDATA_AA_POS, LLDATA_AA_SIZE);
 	memcpy(s_blkConnStateInfo.m_pu1CrcInitValue, pu1LLData+LLDATA_CRCINIT_POS, LLDATA_CRCINIT_SIZE);
 	s_blkConnStateInfo.m_u1TransmitWindowSize = pu1LLData[LLDATA_WINSIZE_POS];
-<<<<<<< HEAD
 	s_blkConnStateInfo.m_u2TransmitWindowOffset = pu1LLData[LLDATA_WINOFFSET_POS]+((pu1LLData[LLDATA_WINOFFSET_POS+1]<<8)&0xFF00);
 	s_blkConnStateInfo.m_u2ConnInterval = pu1LLData[LLDATA_INTERVAL_POS]+((pu1LLData[LLDATA_INTERVAL_POS+1]<<8)&0xFF00);
 	s_blkConnStateInfo.m_u2ConnSlaveLatency = pu1LLData[LLDATA_LATENCY_POS]+((pu1LLData[LLDATA_LATENCY_POS+1]<<8)&0xFF00);
 	s_blkConnStateInfo.m_u2ConnSupervisionTimeout = pu1LLData[LLDATA_TIMEOUT_POS]+((pu1LLData[LLDATA_TIMEOUT_POS+1]<<8)&0xFF00);
-	memcpy(s_blkConnStateInfo.m_pu1ChannelsMap, pu1LLData+LLDATA_CHM_POS, LLDATA_CHM_SIZE);
-=======
-	s_blkConnStateInfo.m_u2TransmitWindowOffset = pu1LLData[LLDATA_WINOFFSET_POS]+(pu1LLData[LLDATA_WINOFFSET_POS+1]<<8)&0xFF00;
-	s_blkConnStateInfo.m_u2ConnInterval = pu1LLData[LLDATA_INTERVAL_POS]+(pu1LLData[LLDATA_INTERVAL_POS+1]<<8)&0xFF00;
-	s_blkConnStateInfo.m_u2ConnSlaveLatency = pu1LLData[LLDATA_LATENCY_POS]+(pu1LLData[LLDATA_LATENCY_POS+1]<<8)&0xFF00;
-	s_blkConnStateInfo.m_u2ConnSupervisionTimeout = pu1LLData[LLDATA_TIMEOUT_POS]+(pu1LLData[LLDATA_TIMEOUT_POS+1]<<8)&0xFF00;
 	memcpy(s_blkConnStateInfo.m_pu1ChannelMap, pu1LLData+LLDATA_CHM_POS, LLDATA_CHM_SIZE);
->>>>>>> 99d08a9c4d71a7608d768d16a57920673408abbf
 	s_blkConnStateInfo.m_u1HopIncrement = pu1LLData[LLDATA_HOP_SCA_POS]&0x1F;
 	s_blkConnStateInfo.m_u1PeerSCA = (pu1LLData[LLDATA_HOP_SCA_POS]>>5)&0x07;
 
