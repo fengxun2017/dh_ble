@@ -22,7 +22,7 @@ char *ADV_SUB_STATE[5] = {"adv_idle","adv_tx","adv_rx","adv_txscanrsp","adv_rxti
 #define ADV_ROUND_OVER						(0xFE)					/* 广播一轮结束，每次广播周期到期后都在37,38,39通道上广播一次*/
 #define ADV_CHANNEL_SWITCH_TO_NEXT			0						/* 切换到下一个广播通道开始广播*/
 #define ADV_CHANNEL_SWITCH_TO_FIRST			1						/* 强制从第一个通道开始广播*/
-#define ADV_RX_WAIT_TIMEOUT					(1000)					/* 每个通道上广播完后等待扫描请求或者连接请求的超时时间*/
+#define ADV_RX_WAIT_TIMEOUT					(250)					/* 每个通道上广播完后等待扫描请求或者连接请求的超时时间*/
 
 /* 广播通道下的帧类型 */
 #define PDU_TYPE_ADV					(0x00)		/* 普通广播 */
@@ -184,7 +184,7 @@ __INLINE static void  SwitchToNextChannel( u1 startFlag )
 	{
 		DEBUG_INFO("tx:%d", channel);
 	
-		whiteIv = GetChannelWhiteIv(channel);									// 配置白化初值
+		whiteIv = GetChannelWhiteIv(channel);									    // 配置白化初值
     	BleRadioWhiteIvCfg(whiteIv);
     	s_blkAdvStateInfo.m_u1CurrentChannel = channel;
     	BleRadioTxData(channel, s_blkAdvStateInfo.m_pu1LinkTxData, BLE_PDU_LENGTH);	// 长度字段实际没有作用	
@@ -200,10 +200,14 @@ __INLINE static void  SwitchToNextChannel( u1 startFlag )
 __INLINE static void AdvRxWaitTimeoutHandler(void *pvalue)
 {
 	// 等待接收超时则关闭接收并切换到下一个通道广播
-	DEBUG_INFO("rx timeout");
-	LinkAdvSubStateSwitch(ADV_RX_TIMEOUT);
 	BleRadioDisable();
-	SwitchToNextChannel(ADV_CHANNEL_SWITCH_TO_NEXT);
+	LinkAdvSubStateSwitch(ADV_RX_TIMEOUT);
+
+	/*
+        这里不立刻做切换下一个广播的动作，nrf51芯片对底层radio的状态机限定比较严格，
+        如果在radio不是disable的状态下启动发射会导致radio出错，所以这里只做关闭接收操作。
+        等收到disabled事件后才启动下个通过的广播。
+	*/
 }
 
 
@@ -250,7 +254,6 @@ __INLINE static void HandleAdvTxDone(void)
 	advState = s_blkAdvStateInfo.m_enAdvSubState;								//获取广播子状态
 	if ( ADV_TX == advState )
 	{
-		DEBUG_INFO("tx done");
 		// 发送完成后在当前通道上开始接收
 		channel = s_blkAdvStateInfo.m_u1CurrentChannel;
 		DEBUG_INFO("rx:%d",channel);
@@ -320,15 +323,14 @@ static void LinkAdvRadioEvtHandler(EnBleRadioEvt evt)
 			//接收完成
 			HandleAdvRxDone();
 		}
+		else if( ADV_RX_TIMEOUT == s_blkAdvStateInfo.m_enAdvSubState )
+		{
+            SwitchToNextChannel(ADV_CHANNEL_SWITCH_TO_NEXT);
+		}
 	}
 }
 
-/**
- *@brief: 		LinkAdvStateInit
- *@details:		链路层广播状态初始化
 
- *@retval:		void
- */
 
 
 
@@ -410,6 +412,12 @@ u4	LinkScanRspCfg(u1 *pu1Data, u2	len)
 	return 	DH_SUCCESS;
 }
 
+/**
+ *@brief: 		LinkAdvStateInit
+ *@details:		链路层广播状态初始化
+
+ *@retval:		void
+ */
 void LinkAdvStateInit(void)
 {
 	s_blkAdvStateInfo.m_u2AdvInterval = INVAILD_DATA;

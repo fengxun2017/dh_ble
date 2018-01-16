@@ -8,7 +8,7 @@
 int SEGGER_RTT_vprintf(unsigned BufferIndex, const char * sFormat, va_list * pParamList);
 
 #define LOG_BUFF 0
-#define BUFF_SIZE 500
+#define BUFF_SIZE 1024
 #define NULL 0
 
 // Spaces and length for maximum file names
