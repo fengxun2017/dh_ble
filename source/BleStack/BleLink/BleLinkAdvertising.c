@@ -22,7 +22,7 @@ char *ADV_SUB_STATE[5] = {"adv_idle","adv_tx","adv_rx","adv_txscanrsp","adv_rxti
 #define ADV_ROUND_OVER						(0xFE)					/* 广播一轮结束，每次广播周期到期后都在37,38,39通道上广播一次*/
 #define ADV_CHANNEL_SWITCH_TO_NEXT			0						/* 切换到下一个广播通道开始广播*/
 #define ADV_CHANNEL_SWITCH_TO_FIRST			1						/* 强制从第一个通道开始广播*/
-#define ADV_RX_WAIT_TIMEOUT					(250)					/* 每个通道上广播完后等待扫描请求或者连接请求的超时时间*/
+#define ADV_RX_WAIT_TIMEOUT					(1500)					/* 每个通道上广播完后等待扫描请求或者连接请求的超时时间*/
 
 /* 广播通道下的帧类型 */
 #define PDU_TYPE_ADV					(0x00)		/* 普通广播 */
@@ -43,7 +43,7 @@ char *ADV_SUB_STATE[5] = {"adv_idle","adv_tx","adv_rx","adv_txscanrsp","adv_rxti
 #define HEADER_RXADD_POS				(7)
 #define HEADER_RXADD_MASK				(0x01)
 
-
+#define BLE_ADV_RX_TIMER                BLE_HA_TIMER0
 
 
 typedef enum
@@ -258,7 +258,7 @@ __INLINE static void HandleAdvTxDone(void)
 		channel = s_blkAdvStateInfo.m_u1CurrentChannel;
 		DEBUG_INFO("rx:%d",channel);
 		BleRadioRxData(channel, s_blkAdvStateInfo.m_pu1LinkRxData);
-		BleLPowerTimerStart(BLE_LP_TIMER1, ADV_RX_WAIT_TIMEOUT, AdvRxWaitTimeoutHandler, NULL);		// 启动接收超时定时器
+		BleHAccuracyTimerStart(BLE_ADV_RX_TIMER, ADV_RX_WAIT_TIMEOUT, AdvRxWaitTimeoutHandler, NULL);		// 启动接收超时定时器
 		LinkAdvSubStateSwitch(ADV_RX);
 	}
 	else if ( ADV_TX_SCANRSP == advState )
@@ -294,14 +294,14 @@ __INLINE static void HandleAdvRxDone(void)
 		if( PDU_TYPE_SCAN_REQ == pduType )
 		{
 		
-			BleLPowerTimerStop(BLE_LP_TIMER1);	// 停止广播等待接收超时
+			BleHAccuracyTimerStop(BLE_ADV_RX_TIMER);	// 停止广播等待接收超时
 			AdvTxScanRsp();
 			DEBUG_INFO("scan req!!!");
 		}
 		else if( PDU_TYPE_CONNECT_REQ == pduType )
 		{
 		
-			BleLPowerTimerStop(BLE_LP_TIMER1);	// 停止广播等待接收超时
+			BleHAccuracyTimerStop(BLE_ADV_RX_TIMER);	// 停止广播等待接收超时
 			BleLPowerTimerStop(BLE_LP_TIMER0);	
 			DEBUG_INFO("connect req!!!");
 			LinkConnReqHandle(TxAddType, pu1Rx+2, pu1Rx+10);

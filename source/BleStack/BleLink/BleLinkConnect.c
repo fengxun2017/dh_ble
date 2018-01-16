@@ -64,6 +64,8 @@ typedef enum
 	CONN_CONNING_RX = 0x12,			// 连接建立中，收到连接请求后等待主机发过来的第一个数据包的过程
 	CONN_CONNECTED_TX = 0x21,		// 连接后的发送数据状态
 	CONN_CONNECTED_RX = 0x22,		// 连接后的等待数据状态
+	CONN_CONNECTED_RXTIMEOUT=0x30,  // 接收超时
+	CONN_CONNING_RXTIMEOUT = 0x40,
 }EnConnSubState;	// 连接态的子状态
 
 typedef struct
@@ -440,6 +442,14 @@ static void PacketRecvTimeout(void *pvalue)
 
 	/*超时关闭radio*/
 	BleRadioDisable();
+	if( CONN_CONNECTED_RX == s_blkConnStateInfo.m_enConnSubState )
+	{
+        LinkConnSubStateSwitch(CONN_CONNECTED_RXTIMEOUT);
+	}
+	else if( CONN_CONNING_RXTIMEOUT == s_blkConnStateInfo.m_enConnSubState )
+	{
+        LinkConnSubStateSwitch(CONN_CONNING_RXTIMEOUT);
+	}
 	
 	if ( s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter == 0 )
 	{
@@ -497,7 +507,6 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 			{
 				BleHAccuracyTimerStop(RECV_PACKET_HA_TIMER);
 			}
-			LinkConnSubStateSwitch(CONN_CONNECTED_TX);		// 收到数据包则需要回复数据，切换到发送子状态
 			ExtractRecvPacketSn(&peerSN, &peerNESN);
 			UpdateSeqNum(peerSN, peerNESN);
 			
@@ -518,6 +527,8 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 			
 			if(CONN_CONNING_RX == s_blkConnStateInfo.m_enConnSubState)
 			{
+			
+			    LinkConnSubStateSwitch(CONN_CONNECTED_TX);		// 收到数据包则需要回复数据，切换到发送子状态
 				/*
 					连接后收到的第一包回空包吧
 				*/
@@ -529,9 +540,9 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 					这里以连接建立了才上报连接事件给上层。
 				*/
 			}
-
-			if(CONN_CONNECTED_RX== s_blkConnStateInfo.m_enConnSubState)
+			else if(CONN_CONNECTED_RX== s_blkConnStateInfo.m_enConnSubState)
 			{
+                LinkConnSubStateSwitch(CONN_CONNECTED_TX);      // 收到数据包则需要回复数据，切换到发送子状态
 				/*
 					非连接后的第一个包，则需要提取HostToLink队列中的数据发送
 				*/
@@ -555,6 +566,21 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 			UpdateLastUnmappedChannel();				// 更新 LastUnmapChannel
 			s_blkConnStateInfo.m_u2ConnEventCounter++;	// 更新连接计数
 
+		}
+		else
+		{
+            if( CONN_CONNECTED_RXTIMEOUT == s_blkConnStateInfo.m_enConnSubState )
+            {
+                /* 本次连接事件中没等到数据，可能空中包丢了，或者连接事件丢失,重置为接收态等待下个事件 */
+                
+                LinkConnSubStateSwitch(CONN_CONNECTED_RX);
+                
+            }
+            else if(CONN_CONNING_RXTIMEOUT == s_blkConnStateInfo.m_enConnSubState )
+            {
+                /* 等待连接后第一个数据包超时了，重置状态等待下个连接事件 */
+                LinkConnSubStateSwitch(CONN_CONNING_RX);
+            }
 		}
 
 	}
