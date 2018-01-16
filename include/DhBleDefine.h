@@ -17,13 +17,15 @@
 #define BLE_CRC_LENGTH				(3)
 #define BLE_PACKET_LENGTH	(BLE_PREAMBLE_LENGTH+BLE_ACC_ADDR_LENGTH+BLE_PDU_LENGTH+BLE_CRC_LENGTH)
 #define BLE_VERSION_NUMBER			(0x06)		/* 6-4.0 7-4.1 8-4.2 9-5.0*/
+
+#define BLE_ATT_MTU_DEFALUT_SIZE    (23)
 #endif
 
 /* 通道使用表为5字节 */
 #define BLE_CHANNEL_MAP_LEN         (5)
 
 /* 目前只支持默认包，不支持协议自动分包 */
-#define BLE_ATT_MTU_SIZE			(23)
+#define BLE_ATT_MTU_SIZE			BLE_ATT_MTU_DEFALUT_SIZE
 /* 广播的接入地址是固定的*/
 #define BLE_ADV_ACCESS_ADDR			(0x8E89BED6)
 

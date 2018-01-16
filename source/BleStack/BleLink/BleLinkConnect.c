@@ -117,7 +117,7 @@ SN,NESN: 响应机制。 收到的NESN是告诉自己对方有没有收到前一
 	
 /* 连接请求中的参数，收到连接请求后，第一个主机发过来的包不管CRC对不对，都决定了连接事件的anchor point */
 	u1	m_u1TransmitWindowSize;					/* 连接建立过程中的监听窗口 1.25ms为单位,1.25 ms to the lesser of 10 ms and (connInterval - 1.25 ms).窗口开始时间为收到连接请求后的transmitWindowOffset + 1.25ms */
-	u2	m_u2TransmitWindowOffset,				/* 监听窗口偏移 1.25ms为单位,0 ms——connInterval*/
+	u2	m_u2TransmitWindowOffset;				/* 监听窗口偏移 1.25ms为单位,0 ms——connInterval*/
 	u2	m_u2ConnInterval;						/* 连接间隔 1.25ms为单位  7.5ms-4s*/
 	u2	m_u2ConnSlaveLatency;					/* 从机延迟--从机可以跳过几个连接时间不监听，降低功耗。0——((connSupervisionTimeout/ connInterval) - 1)，不能大于500
 													如果延迟后没有收到主机包，则后续的每个连接事件都应该监听，知道收到数据包后才能再应用这个参数。*/
@@ -148,16 +148,14 @@ static u2	SCA_TO_PPM[BLE_SCA_GRADE_NUMBER] = {500, 250, 150, 100, 75, 50, 30, 20
 #define WAIT_PACKET_SLEEP_TIMER			BLE_LP_TIMER0			// 下一个连接事件到来前的睡眠唤醒定时器
 #define RECV_PACKET_LP_TIMER			BLE_LP_TIMER0		// 接收数据超时定时器，连接后的第一个包才用，因为第一个包有窗口，
 															// 等待时间比较长，用低功耗定时器。
-
 #define RECV_PACKET_HA_TIMER			BLE_HA_TIMER0		// 后面的数据包接收超时都很短，用高精度定时器
 
 BlkConnStateInfo s_blkConnStateInfo;
-
-static void ConnStateRxFirstPacketHandler(void *pValue);
-static void FirstPacketRecvTimeout(void *pvalue);
+static void PacketRecvTimeout(void *pvalue);
 
 
-__INLINE static void LinkConnSubStateSwitch(u1 enConnSubState)
+
+__INLINE static void LinkConnSubStateSwitch(EnConnSubState enConnSubState)
 {
 	s_blkConnStateInfo.m_enConnSubState = enConnSubState;
 }
@@ -221,7 +219,7 @@ __INLINE static void UpdateSeqNum(u1 SN, u1 NESN )
 	else
 	{
 		/* 更新SN */
-		s_blkConnStateInfo.m_u1TransmitSeqNum = 1-selfSN
+		s_blkConnStateInfo.m_u1TransmitSeqNum = 1-selfSN;
 	}
 }
 
@@ -278,11 +276,11 @@ __INLINE static u1 GetNextDataChannel(void)
 	return u1UnmappedChannel;
 }
 
-__INLINE static CfgCurrentDataChannel(u1 channel)
+__INLINE static void CfgCurrentDataChannel(u1 channel)
 {
 	s_blkConnStateInfo.m_u1CurrentChannel = channel;
 }
-__INLINE static LinkSendData(u1 *pu1Data, u2 u2len)
+__INLINE static void LinkSendData(u1 *pu1Data, u2 u2len)
 {
 	u1	sn,nesn,md,llid,len;
 	BlkBlePduHeader *pHeader;
@@ -303,7 +301,7 @@ __INLINE static LinkSendData(u1 *pu1Data, u2 u2len)
 	}
 	md = NO_MORE_DATA;	/* 目前一个间隔就交互一次 */
 	
-	pHeader = LINK_CONN_STATE_TX_BUFF;
+	pHeader = (BlkBlePduHeader *)LINK_CONN_STATE_TX_BUFF;
 	pHeader->m_u1Header1 = (sn<<DATA_HEAD_SN_POS) | (nesn<<DATA_HEAD_NESN_POS) | (llid<<DATA_HEAD_LLID_POS) | (md<<DATA_HEAD_MD_POS);
 	pHeader->m_u1Header2 = len;
 	if( NULL!=pu1Data )
@@ -313,7 +311,7 @@ __INLINE static LinkSendData(u1 *pu1Data, u2 u2len)
 	BleRadioTxData(s_blkConnStateInfo.m_u1CurrentChannel, LINK_CONN_STATE_TX_BUFF, BLE_PDU_HEADER_LENGTH+len);
 }
 
-__INLINE static void ExtractRecvPacketSn(u1 &sn, u1 &nesn)
+__INLINE static void ExtractRecvPacketSn(u1 *sn, u1 *nesn)
 {
 	BlkBlePduHeader *pHeader;
 
@@ -332,7 +330,7 @@ __INLINE static void BleLinkDataHandle(void)
 	
 	if( !IsBleRadioCrcOk() )
 	{
-		DEBUG_INFO("CRC error!!!")
+		DEBUG_INFO("CRC error!!!");
 		return ;
 	}
 	pHeader = (BlkBlePduHeader *)LINK_CONN_STATE_RX_BUFF;
@@ -363,145 +361,10 @@ __INLINE static void BleLinkDataHandle(void)
 	}
 	
 }
-static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
-{
-	u1	peerSN;
-	u1	peerNESN;
-	static u4	u4SleepTimer;
-	static u4	u4NextConnTime;
-	BlkHostToLinkData blkHostData;
-
-	if( BLE_RADIO_EVT_TRANS_DONE == evt )	/* 发送完成或接收完成*/
-	{
-		if( s_blkConnStateInfo.m_enConnSubState&BLE_CONN_SUB_STATE_RX_MASK )		//接收状态
-		{
-			/* 连接创建后收到了第一个数据包后则认为连接建立了 */
-			if(CONN_CONNING_RX == s_blkConnStateInfo.m_enConnSubState)
-			{
-				BleLPowerTimerStop(RECV_PACKET_LP_TIMER);		// 停止接收第一包的监听定时器
-			}
-			else if(CONN_CONNECTED_RX== s_blkConnStateInfo.m_enConnSubState)
-			{
-				BleHAccuracyTimerStop(RECV_PACKET_HA_TIMER);
-			}
-			LinkConnSubStateSwitch(CONN_CONNECTED_TX);		// 收到数据包则需要回复数据，切换到发送子状态
-			ExtractRecvPacketSn(&peerSN, &peerNESN);
-			UpdateSeqNum(peerSN, peerNESN);
-			
-			/* 
-				连接建立成功后使用连接请求中的 超时参数 
-				timeout单位为10ms，interval单位是1.25ms。 8倍关系
-			*/
-			s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter = s_blkConnStateInfo.m_u2ConnSupervisionTimeout*8/s_blkConnStateInfo.m_u2ConnInterval;
-
-			/*
-				收到第一个数据包了，确定了anchor point
-				启动下次连接事件的定时器
-			*/
-			u4SleepTimer = s_blkConnStateInfo.m_u2ConnInterval*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME;
-			u4SleepTimer -= GetTimerDeviation(u4SleepTimer, s_blkConnStateInfo.m_u1PeerSCA, s_blkConnStateInfo.m_u1SelfSCA);
-			BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStateRxPacketHandler, &u4SleepTimer);
-			
-			if(CONN_CONNING_RX == s_blkConnStateInfo.m_enConnSubState)
-			{
-				/*
-					连接后收到的第一包回空包吧
-				*/
-				LinkSendData(NULL, 0);
-				/* 
-					收到第一包数据上报连接事件
-					收到连接请求的时候，连接是创建。
-					收到连接请求后收到了第一个数据包，连接才算建立。
-					这里以连接建立了才上报连接事件给上层。
-				*/
-
-				
-			}
-
-			if(CONN_CONNECTED_RX== s_blkConnStateInfo.m_enConnSubState)
-			{
-				/*
-					非连接后的第一个包，则需要提取HostToLink队列中的数据发送
-				*/
-				if( DH_SUCCESS == BleHostDataToLinkPop(&blkHostData) )
-				{
-					LinkSendData(blkHostData->m_pu1HostData, blkHostData->m_u1Length);
-				}
-				else
-				{
-					/* 没有数据就回空包*/
-					LinkSendData(NULL, 0);
-				}
-				
-				BleLinkDataHandle();
-			}
-			
-		}
-		else if ( CONN_CONNECTED_TX == s_blkConnStateInfo.m_enConnSubState )
-		{
-			/* 当前实现一个连接间隔只能发送一包数据，所以发送完成就是本次连接事件结束 */
-			UpdateLastUnmappedChannel();				// 更新 LastUnmapChannel
-			s_blkConnStateInfo.m_u2ConnEventCounter++;	// 更新连接计数
-
-		}
-
-	}
-}
-
 
 
 /**
- *@brief: 		FirstPacketRecvTimeout
- *@details:		监听数据包超时了
- *@param[in]	pValue    定时器已经过去的时间
- 
- *@retval:		void
- */
-static void PacketRecvTimeout(void *pvalue)
-{
-	u4	u4PassTime;
-	static u4	u4SleepTimer;
-
-	/*超时关闭radio*/
-	BleRadioDisable();
-	
-	if ( s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter == 0 )
-	{
-		/* 连接超时了 */
-
-		BleLinkStateSwitch(BLE_LINK_STANDBY);	// 链路状态回到空闲态
-		LinkConnSubStateSwitch(CONN_IDLE);		// 复位连接子状态
-
-		if ( CONN_CONNING_RX != s_blkConnStateInfo.m_enConnSubState )
-		{
-			/*
-				上报断开事件,建立连接过程中超时就不上报了吧。
-				
-			*/
-		}
-		return;
-	}
-	u4PassTime = *((u4*)pvalue);	// 之前监听的超时时间
-	/* 没有接收到数据包，理论上在connInterval 时间后重新监听 */
-	u4SleepTimer = s_blkConnStateInfo.m_u2ConnInterval*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME;
-
-	/* 需要减去之前监听窗口的时间 */
-	u4SleepTimer -=  u4PassTime;
-
-	/* 再减去时钟源误差可能导致的误差 */
-	u4SleepTimer -= GetTimerDeviation(u4SleepTimer, s_blkConnStateInfo.m_u1PeerSCA, s_blkConnStateInfo.m_u1SelfSCA);
-	BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStateRxPacketHandler, &u4SleepTimer);
-	
-
-	/* 超时则等于数本次连接事件结束 */
-	UpdateLastUnmappedChannel();				// 更新 LastUnmapChannel
-	s_blkConnStateInfo.m_u2ConnEventCounter++;	// 更新连接计数
-	
-	s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter--;// 没等到数据包，超时计数减1
-}
-
-/**
- *@brief: 		ConnStateRxFirstPacketHandler
+ *@brief: 		ConnStateRxPacketHandler
  *@details:		开始监听数据
  
  *@retval:		void
@@ -564,6 +427,140 @@ static void ConnStateRxPacketHandler(void *pValue)
 }
 
 /**
+ *@brief: 		PacketRecvTimeout
+ *@details:		监听数据包超时了
+ *@param[in]	pValue    定时器已经过去的时间
+ 
+ *@retval:		void
+ */
+static void PacketRecvTimeout(void *pvalue)
+{
+	u4	u4PassTime;
+	static u4	u4SleepTimer;
+
+	/*超时关闭radio*/
+	BleRadioDisable();
+	
+	if ( s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter == 0 )
+	{
+		/* 连接超时了 */
+
+		BleLinkStateSwitch(BLE_LINK_STANDBY);	// 链路状态回到空闲态
+		LinkConnSubStateSwitch(CONN_IDLE);		// 复位连接子状态
+
+		if ( CONN_CONNING_RX != s_blkConnStateInfo.m_enConnSubState )
+		{
+			/*
+				上报断开事件,建立连接过程中超时就不上报了吧。
+				
+			*/
+		}
+		return;
+	}
+	u4PassTime = *((u4*)pvalue);	// 之前监听的超时时间
+	/* 没有接收到数据包，理论上在connInterval 时间后重新监听 */
+	u4SleepTimer = s_blkConnStateInfo.m_u2ConnInterval*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME;
+
+	/* 需要减去之前监听窗口的时间 */
+	u4SleepTimer -=  u4PassTime;
+
+	/* 再减去时钟源误差可能导致的误差 */
+	u4SleepTimer -= GetTimerDeviation(u4SleepTimer, s_blkConnStateInfo.m_u1PeerSCA, s_blkConnStateInfo.m_u1SelfSCA);
+	BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStateRxPacketHandler, &u4SleepTimer);
+	
+
+	/* 超时则等于数本次连接事件结束 */
+	UpdateLastUnmappedChannel();				// 更新 LastUnmapChannel
+	s_blkConnStateInfo.m_u2ConnEventCounter++;	// 更新连接计数
+	
+	s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter--;// 没等到数据包，超时计数减1
+}
+
+
+static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
+{
+	u1	peerSN;
+	u1	peerNESN;
+	static u4	u4SleepTimer;
+	BlkHostToLinkData blkHostData;
+
+	if( BLE_RADIO_EVT_TRANS_DONE == evt )	/* 发送完成或接收完成*/
+	{
+		if( s_blkConnStateInfo.m_enConnSubState&BLE_CONN_SUB_STATE_RX_MASK )		//接收状态
+		{
+			/* 连接创建后收到了第一个数据包后则认为连接建立了 */
+			if(CONN_CONNING_RX == s_blkConnStateInfo.m_enConnSubState)
+			{
+				BleLPowerTimerStop(RECV_PACKET_LP_TIMER);		// 停止接收第一包的监听定时器
+			}
+			else if(CONN_CONNECTED_RX== s_blkConnStateInfo.m_enConnSubState)
+			{
+				BleHAccuracyTimerStop(RECV_PACKET_HA_TIMER);
+			}
+			LinkConnSubStateSwitch(CONN_CONNECTED_TX);		// 收到数据包则需要回复数据，切换到发送子状态
+			ExtractRecvPacketSn(&peerSN, &peerNESN);
+			UpdateSeqNum(peerSN, peerNESN);
+			
+			/* 
+				连接建立成功后使用连接请求中的 超时参数 
+				每次收到数据都刷新一下
+				timeout单位为10ms，interval单位是1.25ms。 8倍关系
+			*/
+			s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter = s_blkConnStateInfo.m_u2ConnSupervisionTimeout*8/s_blkConnStateInfo.m_u2ConnInterval;
+
+			/*
+				收到第一个数据包了，确定了anchor point
+				启动下次连接事件的定时器
+			*/
+			u4SleepTimer = s_blkConnStateInfo.m_u2ConnInterval*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME;
+			u4SleepTimer -= GetTimerDeviation(u4SleepTimer, s_blkConnStateInfo.m_u1PeerSCA, s_blkConnStateInfo.m_u1SelfSCA);
+			BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStateRxPacketHandler, &u4SleepTimer);
+			
+			if(CONN_CONNING_RX == s_blkConnStateInfo.m_enConnSubState)
+			{
+				/*
+					连接后收到的第一包回空包吧
+				*/
+				LinkSendData(NULL, 0);
+				/* 
+					收到第一包数据上报连接事件
+					收到连接请求的时候，连接是创建。
+					收到连接请求后收到了第一个数据包，连接才算建立。
+					这里以连接建立了才上报连接事件给上层。
+				*/
+			}
+
+			if(CONN_CONNECTED_RX== s_blkConnStateInfo.m_enConnSubState)
+			{
+				/*
+					非连接后的第一个包，则需要提取HostToLink队列中的数据发送
+				*/
+				if( DH_SUCCESS == BleHostDataToLinkPop(&blkHostData) )
+				{
+					LinkSendData(blkHostData.m_pu1HostData, blkHostData.m_u1Length);
+				}
+				else
+				{
+					/* 没有数据就回空包*/
+					LinkSendData(NULL, 0);
+				}
+				
+				BleLinkDataHandle();
+			}
+			
+		}
+		else if ( CONN_CONNECTED_TX == s_blkConnStateInfo.m_enConnSubState )
+		{
+			/* 当前实现一个连接间隔只能发送一包数据，所以发送完成就是本次连接事件结束 */
+			UpdateLastUnmappedChannel();				// 更新 LastUnmapChannel
+			s_blkConnStateInfo.m_u2ConnEventCounter++;	// 更新连接计数
+
+		}
+
+	}
+}
+
+/**
  *@brief: 		LinkConnReqHandle
  *@details:		连接请求的处理
  *@param[in]	addrType    对端设备的地址类型
@@ -601,7 +598,8 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 
 	BleLinkStateSwitch(BLE_LINK_CONNECTED);	// 链路状态切换到连接态。
 	LinkConnSubStateSwitch(CONN_CONNING_RX);	// 切换连接连接子状态到连接中状态。
-
+
+
 	/* 设置连接过程中的CRC计算初值*/
 	u4CrcIV = pu1LLData[LLDATA_CRCINIT_POS] + ((pu1LLData[LLDATA_CRCINIT_POS+1]<<8)&0xFF00) + ((pu1LLData[LLDATA_CRCINIT_POS+2]<<16)&0xFF0000);
 	BleRadioCrcInit(u4CrcIV);

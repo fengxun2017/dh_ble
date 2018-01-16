@@ -49,7 +49,7 @@ BlkBleAttribute		BleServiceSets[] =
     },	/* 1 generic access service 0x1800*/
     {
         {UUID_TYPE_16BIT, pu1DeviceNameUuid},
-        {sizeof( pu1DeviceName ), sizeof( pu1DeviceName ), pu1DeviceName};
+        {sizeof( pu1DeviceName ), sizeof( pu1DeviceName ), pu1DeviceName},
         ATT_PERMISSION_READ | ATT_PERMISSION_WRITE,
     },	/* 2 device name */
 
@@ -61,7 +61,7 @@ BlkBleAttribute		BleServiceSets[] =
 
     {
         {UUID_TYPE_16BIT, pu1PrimaryServiceUuid},
-        {UUID_TYPE_16BIT, UUID_TYPE_16BIT, pu1DhServiceDemo};
+        {UUID_TYPE_16BIT, UUID_TYPE_16BIT, pu1DhServiceDemo},
         ATT_PERMISSION_READ,
     },	/* 4 dh demo service */
     {
@@ -166,8 +166,8 @@ u4	BleGattFindAttByHandle( u2 u2Handle, BlkBleAttribute **ppblkAtt )
     /* 规范要求16位uuid要补足128位后比较，这里就不做补足了直接比较*/
     for( u2Index = 0; u2Index < s_blkBleGattInfo.u2AttCount; u2Index++ )
     {
-        pu1AttUUID = s_blkBleGattInfo.blkBleServiceSets[u2Index].attType.pu1Uuid
-                     AttUUIDType = s_blkBleGattInfo.blkBleServiceSets[u2Index].attType.uuidType;
+        pu1AttUUID = s_blkBleGattInfo.blkBleServiceSets[u2Index].attType.pu1Uuid;
+        AttUUIDType = s_blkBleGattInfo.blkBleServiceSets[u2Index].attType.uuidType;
         if ( ( UUIDType == AttUUIDType ) && ( memcmp( pu1AttUUID, pu1UUID, UUIDType ) == 0 ) )
         {
             *ppblkAtt = &s_blkBleGattInfo.blkBleServiceSets[u2Index];

@@ -94,11 +94,13 @@
 #define ATT_READ_BY_TYPE_REQ_LONG               (20)    /* 去除opcode后的长度 */
 #define ATT_READ_REQ_LEN                        (2)     /* 去除opcode后的长度 */
 
+#define ATT_COMMAND_FLAG                        (1<<6)
+#define ATT_AUTHENTICATION_FLAG                 (1<<7)
 
 static u1 CheckGroupType( u1 *pu1Uuid, u1 uuidType )
 {
     u1	pu1PrimarySrvUuid[] = {0x00, 0x28};
-    u1	pu1SecondSSrvUuid[] = {0x01, 0x28};
+//  u1	pu1SecondSSrvUuid[] = {0x01, 0x28};
 
     if( UUID_TYPE_16BIT != uuidType )
     {
@@ -355,7 +357,7 @@ static u4 AttFindInfoReqHandle( u1  *pu1Req, u2 len )
             
             pu1Rsp[rspLen++] = u2AttHandle & 0xff;
             pu1Rsp[rspLen++] = ( u2AttHandle >> 8 ) & 0xff;
-            memcpy( pu1Rsp + rspLen, pblkAtt->attType.pu1Uuid; pblkAtt->attType.uuidType );
+            memcpy( pu1Rsp + rspLen, pblkAtt->attType.pu1Uuid, pblkAtt->attType.uuidType );
             /* uuid的类型实际值就是UUID的长度 */
             rspLen += pblkAtt->attType.uuidType;
         }
@@ -414,7 +416,7 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
     }
     if( ATT_INVALID_HANDLE == u2StartHandle || u2StartHandle > u2EndHandle )
     {
-        return AttErrRsp( ATT_OPCODE_READ_BY_GROUP_TYPE_REQ, u2StartHandle, ATT_ERR_INVALID_HANDLE )
+        return AttErrRsp( ATT_OPCODE_READ_BY_GROUP_TYPE_REQ, u2StartHandle, ATT_ERR_INVALID_HANDLE );
     }
     if( ATT_READ_BY_GROUP_TYPE_REQ_SHORT == len )
     {
@@ -431,7 +433,7 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
     }
     for( u2AttHandle = u2StartHandle; u2AttHandle < u2EndHandle; u2AttHandle++ )
     {
-        BleGattFindAttByHandle( u2AttHandle, *pblkAtt );
+        BleGattFindAttByHandle( u2AttHandle, &pblkAtt );
         if( NULL != pblkAtt )
         {
             if( pblkAtt->attType.uuidType == uuidType && memcmp(pblkAtt->attType.pu1Uuid, pu1GroupType, uuidType) == 0 )
@@ -498,8 +500,6 @@ static u4 AttReadByTypeReqHandle( u1 *pu1Req, u2 len )
     u1	rspLen = 0;
     u1  eachAttDataLen = 0;
     u1	pu1Rsp[BLE_ATT_MTU_SIZE - 2];           // 去掉opcode和length所占字节
-    u1	pu1AttValue[BLE_ATT_MTU_SIZE - 2 - 2];  // Attribute Data List 响应格式为AttHandle AttValue
-    u1  u1AttValueLen = 0;
     u2	u2StartHandle = ATT_INVALID_HANDLE;
     u2	u2EndHandle = ATT_INVALID_HANDLE;
     u2	u2AttHandle = ATT_INVALID_HANDLE;
@@ -520,7 +520,7 @@ static u4 AttReadByTypeReqHandle( u1 *pu1Req, u2 len )
     }
     if( ATT_INVALID_HANDLE == u2StartHandle || u2StartHandle > u2EndHandle )
     {
-        return AttErrRsp( ATT_OPCODE_READ_BY_TYPE_REQ, u2StartHandle, ATT_ERR_INVALID_HANDLE )
+        return AttErrRsp( ATT_OPCODE_READ_BY_TYPE_REQ, u2StartHandle, ATT_ERR_INVALID_HANDLE );
     }
     if( ATT_READ_BY_TYPE_REQ_SHORT == len )
     {
@@ -533,7 +533,7 @@ static u4 AttReadByTypeReqHandle( u1 *pu1Req, u2 len )
     memcpy( pu1FindType, pu1Req + index, uuidType );
     for( u2AttHandle = u2StartHandle; u2AttHandle < u2EndHandle; u2AttHandle++ )
     {
-        BleGattFindAttByHandle( u2AttHandle, *pblkAtt );
+        BleGattFindAttByHandle( u2AttHandle, &pblkAtt );
         if( NULL != pblkAtt )
         {
             if( pblkAtt->attType.uuidType == uuidType && memcmp(pblkAtt->attType.pu1Uuid, pu1FindType, uuidType) == 0 )
@@ -705,6 +705,7 @@ static u4 AttWriteReqHandle(u1* pu1Req, u2 len)
 static u4 AttIndicationConfirm(void)
 {
     
+	return DH_SUCCESS;
 }
 /**
  *@brief: 		BleAttHandle
@@ -716,10 +717,56 @@ static u4 AttIndicationConfirm(void)
 u4 BleAttReqHandle( u1 *pu1Data, u2 len )
 {
     u1	opcode;
+    u4	u4Ret;
+	opcode = pu1Data[0];
+    
+    switch(opcode)
+    {
 
-    opcode = pu1Data[0];
+        case ATT_OPCODE_MTU_EXCHANGE_REQ:
+            u4Ret = AttMtuRsp(BLE_ATT_MTU_SIZE);
+        break;
+
+        case ATT_OPCODE_FIND_INFO_REQ:
+            u4Ret = AttFindInfoReqHandle(pu1Data+1, len-1);
+        break;
+        
+        case ATT_OPCODE_READ_BY_GROUP_TYPE_REQ:
+            u4Ret = AttReadByGroupTypeReqHandle(pu1Data+1, len-1);
+        break;
+
+        
+        case ATT_OPCODE_READ_BY_TYPE_REQ:
+            u4Ret = AttReadByTypeReqHandle(pu1Data+1, len-1);
+        break;
+
+        case ATT_OPCODE_READ_REQ:
+            u4Ret = AttReadReqHandle(pu1Data+1, len-1);
+        break;
+        
+        case ATT_OPCODE_WRITE_CMD:
+            u4Ret = AttWriteCommandHandle(pu1Data+1, len-1);
+        break;
+
+        case ATT_OPCODE_WRITE_REQ:
+            u4Ret = AttWriteReqHandle(pu1Data+1, len-1);
+        break;
+
+        case ATT_OPCODE_CONFIRMATION:
+            u4Ret = AttIndicationConfirm();
+        break;
+
+        default :
+            if( opcode&ATT_COMMAND_FLAG )
+            {
+                u4Ret = AttErrRsp(opcode, 0x00, ATT_ERR_REQUEST_NOT_SUPPORTED);
+            }
+        break;
+        
+    }
+	
+	return u4Ret;
 }
-
 /**
  *@brief: 		BleAttSendNotify
  *@details:		以notify方式发送属性值数据
@@ -753,7 +800,7 @@ u4 BleAttSendNotify(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
     /* 同时也要更新属性值 */
     memcpy(pblkAtt->attValue.pu1AttValue, pu1AttValue, u2ValueLen);
     
-    if( BleL2capDataSend( BLE_L2CAP_ATT_CHANNEL_ID, &pu1Notify, index ) != DH_SUCCESS )
+    if( BleL2capDataSend( BLE_L2CAP_ATT_CHANNEL_ID, pu1Notify, index ) != DH_SUCCESS )
     {
         return ERR_ATT_SEND_RSP_FAILED;
     }

@@ -39,7 +39,7 @@ static u4 LinkFeatureReqHandle(u1	*pu1FearureSet, u2 len)
 	
 	if( NULL==pu1FearureSet || LL_FEATURE_SET_SIZE!=len )
 	{
-		return BLE_LINK_INVALID_PARAM;
+		return ERR_LINK_INVALID_PARAMS;
 	}
 
 	// 目前只支持4.0的加密而已,不用管对方的feature了
@@ -49,6 +49,8 @@ static u4 LinkFeatureReqHandle(u1	*pu1FearureSet, u2 len)
 	rspData.m_u1Length = LL_FEATURE_SET_SIZE + 1;	//opcode
 	// 链路控制目前也用这个接口好了
 	BleHostDataToLinkPush(rspData);
+	
+	return DH_SUCCESS;
 }
 
 static u4 LinkVersionIndHandle(u1 *peerVersion, u2 len)
@@ -58,7 +60,7 @@ static u4 LinkVersionIndHandle(u1 *peerVersion, u2 len)
 	
 	if( NULL==peerVersion || LL_VERSION_SIZE!=len )
 	{
-		return BLE_LINK_INVALID_PARAM;
+		return ERR_LINK_INVALID_PARAMS;
 	}
 
 	// 目前只支持4.0,不用看对方version了
@@ -73,22 +75,35 @@ static u4 LinkVersionIndHandle(u1 *peerVersion, u2 len)
 	rspData.m_u1Length = rspLen;	//opcode
 	// 链路控制目前也用这个接口好了
 	BleHostDataToLinkPush(rspData);
+	
+	return DH_SUCCESS;
 }
 
-void LinkRspUnknown()
+void LinkRspUnknown(u1 opcode)
 {
 	BlkHostToLinkData rspData;
 	u2	rspLen = 0;
 	
 	memset(rspData.m_pu1HostData, 0x00, BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH);
 	rspData.m_pu1HostData[rspLen++] = LL_UNKNOWN_RSP;
+	rspData.m_pu1HostData[rspLen++] = opcode;
 	
 	rspData.m_u1Length = rspLen;	//opcode
 	// 链路控制目前也用这个接口好了
 	BleHostDataToLinkPush(rspData);
 }
 
+/**
+ *@brief: 		CheckLinkChannelMapUpdate
+ *@details:		检查链路控制请求是否是channel map update
+ *@param[in]	pu1PDU              链路PDU
+ *@param[out]	pu1NewChannelMap    返回新的通道映射
+ *@param[out]	u2Instant           返回通道改变的时间点
 
+ *@note 通道更新请求需要立刻处理，因为链路数据都是通过下半部处理的，有延迟。所以不能放在 BleLinkControlHandle 函数中处理
+        需要直接在链路数据接收中断里处理
+ *@retval:		DH_SUCCESS
+ */
 u4 CheckLinkChannelMapUpdate(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *u2Instant)
 {
     u1  llid;
@@ -108,7 +123,7 @@ u4 CheckLinkChannelMapUpdate(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *u2Instant)
         opcode = pu1PDU[index++];
         if( LL_CHANNEL_MAP_REQ == opcode )
         {
-            memcpy(pu1NewChannelMap, pu1PDU+index, BLE_CHANNEL_MAP_LEN)；
+            memcpy(pu1NewChannelMap, pu1PDU+index, BLE_CHANNEL_MAP_LEN);
             index += BLE_CHANNEL_MAP_LEN;
             *u2Instant = pu1PDU[index++];
             *u2Instant += (pu1PDU[index++]<<8)&0xff00;
@@ -157,7 +172,7 @@ u4 BleLinkControlHandle(u1 *pu1Data, u2 len)
 		break;
 
 		default:
-			LinkRspUnknown();
+			LinkRspUnknown(opcode);
 		break;
 	}
 

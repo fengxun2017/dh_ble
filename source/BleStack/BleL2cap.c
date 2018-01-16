@@ -35,7 +35,7 @@ u4 BleL2capDataSend(u2 u2ChannelId,  u1 *pu1Data, u2 len)
 	hostData.m_pu1HostData[index++] = len>>8;
 	hostData.m_pu1HostData[index++] = u2ChannelId&0xff;
 	hostData.m_pu1HostData[index++] = u2ChannelId>>8;
-	memcp(hostData.m_pu1HostData+index, pu1Data, len);
+	memcpy(hostData.m_pu1HostData+index, pu1Data, len);
 
 	if(BleHostDataToLinkPush(hostData) != DH_SUCCESS )
 	{

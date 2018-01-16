@@ -49,5 +49,5 @@ extern "C"{
 #include "./BleStack/BleLink/BleLink.h"
 #include "./BleStack/BleLink/BleLinkAdvertising.h"
 #include "./BleStack/BleLink/BleLinkConnect.h"
-#include "./BkeStack/BleLink/BleLinkControl.h"
+#include "./BleStack/BleLink/BleLinkControl.h"
 #endif /* __DHGLOBALHEAD_H__ */

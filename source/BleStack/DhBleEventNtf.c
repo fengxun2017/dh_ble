@@ -39,7 +39,7 @@ void DhBleEventHandlerReg(BleEventHandler handler)
 u4 DhBleEventPush(BlkBleEvent event)
 {
 	BlkBleEvent *pBlkEvent;
-	pBlkEvent = (BlkBleEvent *)QueueEmptyElemGet(BLE_EVENT_NTF_QUEUE);
+	pBlkEvent = (BlkBleEvent *)QueueEmptyElemGet(BLE_EVENT_NTF_QUEUE, sizeof(BlkBleEvent));
 	if( NULL == pBlkEvent)
 	{
 		return ERR_DH_QUEUE_FULL;
@@ -62,12 +62,12 @@ void BLE_EVENT_NTF_IRQ_HANDLER(void)
 			对 BLE_EVENT_NTF_QUEUE队列的出队操作只在这里
 			没有临界区问题
 		*/
-		pBleEvent = (BlkBleEvent *)QueueValidElemGet(BLE_EVENT_NTF_QUEUE);
+		pBleEvent = (BlkBleEvent *)QueueValidElemGet(BLE_EVENT_NTF_QUEUE, sizeof(BlkBleEvent));
 		if( NULL != pBleEvent)
 		{
 			bleEvent = *pBleEvent;
 			s_bleEventHandler(&bleEvent);
-			QueuePop(BLE_EVENT_NTF_IRQ);
+			QueuePop(BLE_EVENT_NTF_QUEUE);
 		}
 	}while(NULL != pBleEvent );
 }

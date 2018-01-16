@@ -44,7 +44,7 @@ u1	IsQueueEmpty( BlkDhQueue *queue )
 		return	1;
 	}
 
-	return	0
+	return	0;
 }
 
 u1 IsQueueFull( BlkDhQueue *queue )
@@ -62,13 +62,14 @@ u1 IsQueueFull( BlkDhQueue *queue )
  *@details:		获取队列中的一个无效内容元素，队里现有元素加1,赋值在外部进行。
  				等于将入队操作的赋值操作提取到外部进行，先入队实际的队列元素赋值在外部
  *@param[in]	queue  
+ *@param[in]	u4ElemSize  队列中的元素大小
 
  *@retval:		pvalue		内容为空的元素指针
  */
-void *QueueEmptyElemGet( BlkDhQueue *queue )
+void *QueueEmptyElemGet( BlkDhQueue *queue ,u4 u4ElemSize)
 {
 	void *pValue;
-	if( IsQueueFull() )
+	if( IsQueueFull(queue) )
 	{
 		/* 队列已满，没有空元素了 */
 		return NULL;
@@ -80,7 +81,7 @@ void *QueueEmptyElemGet( BlkDhQueue *queue )
 	*/
 	CRITICAL_REGION_ENTER();
 	
-	pValue = queue->m_pValue[queue->m_u2IWrite];
+	pValue = (void *)((u4)(queue->m_pValue)+u4ElemSize*(queue->m_u2IWrite));
 	queue->m_u2IWrite = (queue->m_u2IWrite+1)&(queue->m_u2QueueSize-1);	// 先做入队操作了
 	queue->m_u2ElemCount++;
 	
@@ -97,18 +98,19 @@ void *QueueEmptyElemGet( BlkDhQueue *queue )
  				提取数据和出队操纵分开，可能出现多个地方出队操纵提取的是同一个数据。
  				不过现在队列是协议栈内部使用的。对同一个队列的出队操纵都是在同一个地方，不会出现多线程的问题。
  *@param[in]	queue  
+ *@param[in]	u4ElemSize  队列中的元素大小
  
  *@retval:		队列头元素
  */
-void *QueueValidElemGet(BlkDhQueue *queue)
+void *QueueValidElemGet(BlkDhQueue *queue, u4 u4ElemSize)
 {
 	void *pValue;
 	
-	if( IsQueueEmpty() )
+	if( IsQueueEmpty(queue) )
 	{
 		return NULL;
 	}
-	pValue = &(queue->m_pValue[queue->m_u2IRead]);
+	pValue = (void *)((u4)(queue->m_pValue)+u4ElemSize*(queue->m_u2IRead));
 	
 	return pValue;
 }
@@ -122,7 +124,10 @@ void *QueueValidElemGet(BlkDhQueue *queue)
  */
 void QueuePop(BlkDhQueue *queue)
 {
+	CRITICAL_REGION_ENTER();
 	queue->m_u2IRead = (queue->m_u2IRead+1)&(queue->m_u2QueueSize-1);		// 出队操作
 	queue->m_u2ElemCount--;
+	CRITICAL_REGION_EXIT();
+
 }
 

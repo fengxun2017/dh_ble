@@ -130,13 +130,13 @@ u4 BleHostDataToLinkPush(BlkHostToLinkData blkData)
 {
 	BlkHostToLinkData *pblkData;
 	
-	pblkData = (BlkHostToLinkData *)QueueEmptyElemGet(BLE_HOST_TO_LINK_DATA_QUEUE);
+	pblkData = (BlkHostToLinkData *)QueueEmptyElemGet(BLE_HOST_TO_LINK_DATA_QUEUE, sizeof(BlkHostToLinkData));
 	if( NULL == pblkData )
 	{
 		return ERR_DH_QUEUE_FULL;
 	}
-	memcpy(pblkData.m_pu1HostData, blkData.m_pu1HostData, BLE_PDU_LENGTH);
-	pblkData.m_u1Length = blkData.m_u1Length;
+	memcpy(pblkData->m_pu1HostData, blkData.m_pu1HostData, BLE_PDU_LENGTH);
+	pblkData->m_u1Length = blkData.m_u1Length;
 
 	return DH_SUCCESS;
 }
@@ -148,15 +148,15 @@ u4 BleHostDataToLinkPush(BlkHostToLinkData blkData)
  
  *@retval:		DH_SUCCESS
  */
-u4 BleHostDataToLinkPop(BlkHostToLinkData &pblkData)
+u4 BleHostDataToLinkPop(BlkHostToLinkData *pblkData)
 {
 	BlkHostToLinkData *tmp;
 
 	if( NULL == pblkData )
 	{
-		return BLE_LINK_INVALID_PARAM;
+		return ERR_LINK_INVALID_PARAMS;
 	}
-	tmp = (BlkHostToLinkData*)QueueValidElemGet(BLE_HOST_TO_LINK_DATA_QUEUE);
+	tmp = (BlkHostToLinkData*)QueueValidElemGet(BLE_HOST_TO_LINK_DATA_QUEUE, sizeof(BlkHostToLinkData));
 	if( NULL == tmp)
 	{
 		return ERR_DH_QEUEUE_EMPTY;
@@ -179,13 +179,13 @@ u4 BleLinkDataToHostPush(BlkLinkToHostData blkData)
 {
 	BlkLinkToHostData *pblkData;
 	
-	pblkData = (BlkLinkToHostData *)QueueEmptyElemGet(BLE_LINK_TO_HOST_DATA_QUEUE);
+	pblkData = (BlkLinkToHostData *)QueueEmptyElemGet(BLE_LINK_TO_HOST_DATA_QUEUE, sizeof(BlkLinkToHostData));
 	if( NULL == pblkData)
 	{
 		return ERR_DH_QUEUE_FULL;
 	}
 	
-	memcpy(pblkData, blkData.m_pu1LinkData, BLE_PDU_LENGTH);
+	memcpy(pblkData->m_pu1LinkData, blkData.m_pu1LinkData, BLE_PDU_LENGTH);
 
 	/* 触发软中断去处理 */
 	NVIC_SetPendingIRQ(BLE_STACK_SOFTIRQ);
@@ -201,7 +201,7 @@ void BLE_STACK_SOFTIRQ_HANDLER(void)
 	BlkLinkToHostData *pData;
 	
 	do{
-		pData = (BlkLinkToHostData *)QueueValidElemGet(BLE_LINK_TO_HOST_DATA_QUEUE);
+		pData = (BlkLinkToHostData *)QueueValidElemGet(BLE_LINK_TO_HOST_DATA_QUEUE, sizeof(BlkLinkToHostData));
 		if( NULL != pData )
 		{
 			pHeader = (BlkBlePduHeader *)pData->m_pu1LinkData;

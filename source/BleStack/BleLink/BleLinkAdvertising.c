@@ -384,11 +384,11 @@ u4 LinkAdvDataCfg(u1 *pu1Data, u2	len)
 {
 	if( len > BLE_PDU_LENGTH )
 	{
-		return BLE_LINK_INVALID_LEN;
+		return ERR_LINK_INVALID_LEN;
 	}
 	
 	memcpy(s_blkAdvStateInfo.m_pu1LinkTxData, pu1Data, len);
-	return 	BLE_LINK_SUCCESS;
+	return 	DH_SUCCESS;
 }
 
 /**
@@ -403,11 +403,11 @@ u4	LinkScanRspCfg(u1 *pu1Data, u2	len)
 {
 	if( len > BLE_PDU_LENGTH )
 	{
-		return BLE_LINK_INVALID_LEN;
+		return ERR_LINK_INVALID_LEN;
 	}
 	
 	memcpy(s_blkAdvStateInfo.m_pu1LinkScanRspData, pu1Data, len);
-	return 	BLE_LINK_SUCCESS;
+	return 	DH_SUCCESS;
 }
 
 void LinkAdvStateInit(void)
@@ -433,7 +433,7 @@ u4 LinkAdvStart(void)
 	channel = FirstAdvChannelGet();
 	if( BLE_INVALID_CHANNEL == channel )
 	{
-		return BLE_LINK_START_ERROR;
+		return ERR_LINK_START_ERROR;
 	}
 	DEBUG_INFO("adv on channel:%d", channel);
 
@@ -451,7 +451,7 @@ u4 LinkAdvStart(void)
     /* 启动广播间隔定时器，规范要求间隔应该加上一个 0-10ms的随机延迟，不过这里不实现了 */
    	BleLPowerTimerStart(BLE_LP_TIMER0, s_blkAdvStateInfo.m_u2AdvInterval*1000, AdvIntervalTimeoutHandler, NULL);
 	LinkAdvSubStateSwitch(ADV_TX);
- 	return BLE_LINK_SUCCESS;
+ 	return DH_SUCCESS;
 }
 
 
