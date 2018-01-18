@@ -12,7 +12,7 @@
 #define PCNF0_S0LEN_1BYTE			(1<<8)
 #define PCNF0_S1LEN_0BIT			(0<<16)
 
-#define PCNF1_MAXLEN_VALUE			(BLE_PDU_LENGTH-2)	//51822的radio PDU中的前两字节不算在payload长度内
+#define PCNF1_MAXLEN_VALUE			(BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH)	//51822的radio PDU中的前两字节不算在payload长度内
 #define PCNF1_STATLEN_0				(0<<8)
 #define PCNF1_BALEN_3				(3<<16)
 #define PCNF1_ENDIA_LITTLE			(0<<24)

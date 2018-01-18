@@ -14,7 +14,8 @@
 #if !defined(BLE_LINK_DEBUG)
 #undef DEBUG_INFO
 #define DEBUG_INFO(...)
-
+#undef DEBUG_DATA
+#define DEBUG_DATA(...)
 #else
 char *LINK_STATE_STRING[4] ={"ble link advertising", "ble link connected", "ble link standby"}; 
 #endif
@@ -81,7 +82,7 @@ void BleLinkInit(void)
 	s_blkLinkInfo.m_enState = BLE_LINK_STANDBY;
 
 	LinkAdvStateInit();	//链路广播状态相关初始化
-	LinkConnStateInit();
+	LinkConnStateInit(BLE_SCA_250_PPM);
 
 	
 	/* 使能协议栈下半部处理的软中断 */
@@ -115,7 +116,6 @@ void BleLinkStateHandlerReg(EnBleLinkState state, BleRadioEvtHandler evtHandler)
 void BleLinkStateSwitch(EnBleLinkState state)
 {
 	s_blkLinkInfo.m_enState = state;
-	DEBUG_INFO("switch link state:%s",LINK_STATE_STRING[state]);
 }
 
 
@@ -135,9 +135,9 @@ u4 BleHostDataToLinkPush(BlkHostToLinkData blkData)
 	{
 		return ERR_DH_QUEUE_FULL;
 	}
-	memcpy(pblkData->m_pu1HostData, blkData.m_pu1HostData, BLE_PDU_LENGTH);
+	memcpy(pblkData->m_pu1HostData, blkData.m_pu1HostData, BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH);
 	pblkData->m_u1Length = blkData.m_u1Length;
-
+    pblkData->m_u1PacketFlag = blkData.m_u1PacketFlag;
 	return DH_SUCCESS;
 }
 
@@ -163,6 +163,7 @@ u4 BleHostDataToLinkPop(BlkHostToLinkData *pblkData)
 	}
 	memcpy(pblkData->m_pu1HostData, tmp->m_pu1HostData, BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH);
 	pblkData->m_u1Length = tmp->m_u1Length;
+	pblkData->m_u1PacketFlag = tmp->m_u1PacketFlag;
 	QueuePop(BLE_HOST_TO_LINK_DATA_QUEUE);
 
 	return DH_SUCCESS;
@@ -199,7 +200,7 @@ void BLE_STACK_SOFTIRQ_HANDLER(void)
 	u2	len;
 	BlkBlePduHeader *pHeader;
 	BlkLinkToHostData *pData;
-	
+	DEBUG_INFO("soft irq!!!");
 	do{
 		pData = (BlkLinkToHostData *)QueueValidElemGet(BLE_LINK_TO_HOST_DATA_QUEUE, sizeof(BlkLinkToHostData));
 		if( NULL != pData )
@@ -210,15 +211,16 @@ void BLE_STACK_SOFTIRQ_HANDLER(void)
 			
 			if ( LLID_CONTROL==llid  && len>0 )
 			{
+			    DEBUG_INFO("link control");
 				BleLinkControlHandle(pData->m_pu1LinkData+BLE_PDU_HEADER_LENGTH, len);
 			}
 			else if( (LLID_CONTINUATION==llid || LLID_START==llid) && len>0 )
 			{
+			    DEBUG_INFO("l2cap handle");
 				BleL2capHandle(pData->m_pu1LinkData+BLE_PDU_HEADER_LENGTH, len);
 			}
 			/* 数据处理完要出队 */
 			QueuePop(BLE_LINK_TO_HOST_DATA_QUEUE);
 		}
 	}while( NULL != pData );
-	
 }

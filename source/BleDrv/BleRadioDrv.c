@@ -140,6 +140,19 @@ void BleRadioTxData( u1 u1channel, u1 *pu1Data, u2 len )
     NrfRadioStartTx();
 }
 
+/**
+ *@brief: 		BleRadioSimpleTx
+ *@details:		ble发送数据，直接在当前通道下发送不做通道切换操作
+ *@param[in]	pu1Data  
+ *@param[in]	len  
+ 
+ *@retval:		void
+ */
+void BleRadioSimpleTx(u1 *pu1Data, u2 len)
+{
+    NrfRadioPacketPtrCfg( pu1Data );
+    NrfRadioStartTx();
+}
 
 /**
  *@brief: 		BleRadioRxData

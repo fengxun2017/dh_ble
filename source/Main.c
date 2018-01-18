@@ -21,7 +21,6 @@ void TestHandler(void *pContext)
 		BleLPowerTimerStart(BLE_LP_TIMER2,300000,TestHandler3, NULL);
 	}
 	LPTimer0Count++;
-
 }
 
 void TestCalRtc(void *pContext)
@@ -126,7 +125,7 @@ int main(void)
 	BleLinkInit();
 	LinkAdvDataCfg(test_data, sizeof(test_data));
 	LinkScanRspCfg(test_data2, sizeof(test_data2));
-	LinkAdvParamsCfg(channelOn, 2000);
+	LinkAdvParamsCfg(channelOn, 20);
 	LinkAdvAddrInfoCfg(addr);
 	LinkAdvStart();
 	

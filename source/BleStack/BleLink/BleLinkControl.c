@@ -6,6 +6,15 @@
 */
 #include "../../include/DhGlobalHead.h"
 
+#define nBLE_LINK_CONTROL_DEBUG
+
+#if !defined(BLE_LINK_CONTROL_DEBUG)
+#undef DEBUG_INFO
+#define DEBUG_INFO(...)
+#undef DEBUG_DATA
+#define DEBUG_DATA(...)
+#endif
+
 #define LL_CONNECTION_UPDATE_REQ		0x00
 #define LL_CHANNEL_MAP_REQ				0x01
 #define LL_TERMINATE_IND				0x02
@@ -17,12 +26,12 @@
 
 #define LL_FEATURE_REQ					0x08
 #define LL_FEATURE_RSP					0x09
-	#define LL_FEATURE_SET_SIZE					0x08
+	#define LL_FEATURE_SET_SIZE			0x08
 	
 #define LL_PAUSE_ENC_REQ				0x0A
 #define LL_PAUSE_ENC_RSP				0x0B
 #define LL_VERSION_IND					0x0C
-	#define LL_VERSION_SIZE						0x05
+	#define LL_VERSION_SIZE				0x05
 #define LL_REJECT_IND					0x0D
 
 #define FEATURE_SUPPORT_LE_ENCY         (1<<0x00)
@@ -48,6 +57,8 @@ static u4 LinkFeatureReqHandle(u1	*pu1FearureSet, u2 len)
 	rspData.m_pu1HostData[1] |=  FEATURE_SUPPORT_LE_ENCY;
 	rspData.m_u1Length = LL_FEATURE_SET_SIZE + 1;	//opcode
 	// 链路控制目前也用这个接口好了
+
+	rspData.m_u1PacketFlag = CONTROL_PACKET;
 	BleHostDataToLinkPush(rspData);
 	
 	return DH_SUCCESS;
@@ -73,9 +84,9 @@ static u4 LinkVersionIndHandle(u1 *peerVersion, u2 len)
 	rspData.m_pu1HostData[rspLen++] = LL_VERSION_SUBVERSNR>>8;
 	
 	rspData.m_u1Length = rspLen;	//opcode
+	rspData.m_u1PacketFlag = CONTROL_PACKET;
 	// 链路控制目前也用这个接口好了
 	BleHostDataToLinkPush(rspData);
-	
 	return DH_SUCCESS;
 }
 
@@ -89,6 +100,7 @@ void LinkRspUnknown(u1 opcode)
 	rspData.m_pu1HostData[rspLen++] = opcode;
 	
 	rspData.m_u1Length = rspLen;	//opcode
+	rspData.m_u1PacketFlag = CONTROL_PACKET;
 	// 链路控制目前也用这个接口好了
 	BleHostDataToLinkPush(rspData);
 }

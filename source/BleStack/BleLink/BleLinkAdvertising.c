@@ -230,7 +230,6 @@ __INLINE static void AdvTxScanRsp(void)
 	
 		whiteIv = GetChannelWhiteIv(channel);									// 配置白化初值
     	BleRadioWhiteIvCfg(whiteIv);
-    	s_blkAdvStateInfo.m_u1CurrentChannel = channel;
     	BleRadioTxData(channel, s_blkAdvStateInfo.m_pu1LinkScanRspData, BLE_PDU_LENGTH);	// 长度字段实际没有作用	
     	LinkAdvSubStateSwitch(ADV_TX_SCANRSP);
 		return ;
@@ -258,8 +257,8 @@ __INLINE static void HandleAdvTxDone(void)
 		channel = s_blkAdvStateInfo.m_u1CurrentChannel;
 		DEBUG_INFO("rx:%d",channel);
 		BleRadioRxData(channel, s_blkAdvStateInfo.m_pu1LinkRxData);
-		BleHAccuracyTimerStart(BLE_ADV_RX_TIMER, ADV_RX_WAIT_TIMEOUT, AdvRxWaitTimeoutHandler, NULL);		// 启动接收超时定时器
 		LinkAdvSubStateSwitch(ADV_RX);
+		BleHAccuracyTimerStart(BLE_ADV_RX_TIMER, ADV_RX_WAIT_TIMEOUT, AdvRxWaitTimeoutHandler, NULL);		// 启动接收超时定时器
 	}
 	else if ( ADV_TX_SCANRSP == advState )
 	{
@@ -287,6 +286,7 @@ __INLINE static void HandleAdvRxDone(void)
 	/* 
 		扫描请求处理:			header(2 octets) ScanA(2 octets) AdvA(6 octets)
 		连接请求：			header(2 octets) InitA(6 octets) AdvA(6 octets) LLData(22 octets)
+
 		header:PDU Type(4 bits) RFU(2 bits) TxAdd(1 bit) RxAdd(1 bit) Length(6 bits) RFU(2 bits)
 	*/	
 	if( selfType==RxAddType && memcmp(pu1Rx+8, s_blkAdvStateInfo.m_blkAddrInfo.m_pu1Addr, BLE_ADDR_LEN)==0 )
@@ -304,7 +304,7 @@ __INLINE static void HandleAdvRxDone(void)
 			BleHAccuracyTimerStop(BLE_ADV_RX_TIMER);	// 停止广播等待接收超时
 			BleLPowerTimerStop(BLE_LP_TIMER0);	
 			DEBUG_INFO("connect req!!!");
-			LinkConnReqHandle(TxAddType, pu1Rx+2, pu1Rx+10);
+			LinkConnReqHandle(TxAddType, pu1Rx+2, pu1Rx+14);
 		}
 	}
 }

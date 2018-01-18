@@ -15,8 +15,7 @@ extern "C"{
 #endif /* __cplusplus */
 
 extern void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData);
-extern void LinkConnSelfSCACfg(u1 sca);
-extern void LinkConnStateInit(void);
+extern void LinkConnStateInit(u1 sca);
 
 #ifdef __cplusplus
 #if __cplusplus

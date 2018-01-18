@@ -33,6 +33,8 @@ extern void BleRadioRssiMeasuStart(void);
 extern void BleRadioRssiMeasuStop(void);
 extern void BleRadioRxData(u1 u1Channel, u1 *pu1Data);
 extern void BleRadioTxData(u1 u1channel, u1 *pu1Data, u2 len);
+extern void BleRadioSimpleTx(u1 *pu1Data, u2 len);
+
 extern void BleRadioTxRxAddrCfg( u1 logicAddr, u4 u4AccAddr );
 extern void BleRadioWhiteIvCfg(u1 iv);
 extern u1 IsBleRadioCrcOk(void);

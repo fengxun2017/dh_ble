@@ -23,6 +23,8 @@
 #define LLID_EMPTY_PACKET			(0x01)			// 空包的LLID需要设置成0x01
 #define LLID_CONTROL				(0x03)
 
+#define CONTROL_PACKET              (0x01)
+#define DATA_PACKET                 (0x00)
 typedef struct
 {
 	u1	m_u1Header1;
@@ -38,6 +40,7 @@ typedef struct
 {
 	u1 m_pu1HostData[BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH];
 	u1 m_u1Length;					// buff中数据长度
+	u1 m_u1PacketFlag;
 }BlkHostToLinkData;
 
 typedef struct
