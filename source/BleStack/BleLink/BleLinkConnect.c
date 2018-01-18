@@ -133,6 +133,7 @@ SN,NESN: 响应机制。 收到的NESN是告诉自己对方有没有收到前一
 													如果延迟后没有收到主机包，则后续的每个连接事件都应该监听，知道收到数据包后才能再应用这个参数。*/
 	u2	m_u2ConnSupervisionTimeout;				/* 连接超时--10ms为单位，100 ms —— 32.0 s并且大于(1 + connSlaveLatency) * connInterval。连接建立过程如果超过6个connInterval时间，则认为建立失败 */
 	u2	m_u2ConnSupervisionTimeoutCounter;		/* 没有资源对超时单独创建定时器，超时时间不需要精确，这里用一个计数器，以connInterval为单位来计数*/
+	u2  m_u2connTimeoutBackup;                  /* 连接监控超时备份 */
 	u1	m_pu1ChannelMap[BLE_CHANNEL_MAP_LEN];	/* 通道映射图，指示可用通道 ,LSB
 													The LSB represents data channel index 0 and the bit in position 36 represents data channel index 36.*/
 	u1  m_pu1NewChannelMap[BLE_CHANNEL_MAP_LEN];
@@ -146,6 +147,9 @@ SN,NESN: 响应机制。 收到的NESN是告诉自己对方有没有收到前一
 
 	u1	m_u1PeerAddrType;						/* 对端设备地址类型 */
 	u1	m_pu1PeerAddr[BLE_ADDR_LEN];			/* 对端设备地址 ,LSB    */
+
+	u4  m_u4SleepTimer;                         /* 每次等待下次连接事件时的睡眠时间 */
+	                                            
 	EnConnSubState		m_enConnSubState;		/* 连接态子状态 */
 	
 }BlkConnStateInfo;
@@ -520,25 +524,21 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 			ExtractRecvPacketSn(&peerSN, &peerNESN);
 			UpdateSeqNum(peerSN, peerNESN);
 			
-
-
 			/* 
-				连接建立成功后使用连接请求中的 超时参数 
 				每次收到数据都刷新一下
-				timeout单位为10ms，interval单位是1.25ms。 8倍关系
 			*/
-			s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter = s_blkConnStateInfo.m_u2ConnSupervisionTimeout*8/s_blkConnStateInfo.m_u2ConnInterval;
+			s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter = s_blkConnStateInfo.m_u2connTimeoutBackup
 
 			/*
 				收到本次连接事件的第一个数据包了，确定了anchor point
 				启动下次连接事件的定时器
 			*/
-			u4SleepTimer = s_blkConnStateInfo.m_u2ConnInterval*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME-PACKET_EXTEND_WINDOW;
-			u4SleepTimer -= GetTimerDeviation(u4SleepTimer, s_blkConnStateInfo.m_u1PeerSCA, s_blkConnStateInfo.m_u1SelfSCA);
+			u4SleepTimer = s_blkConnStateInfo.m_u4SleepTimer;
 			BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStateRxPacketHandler, &u4SleepTimer);
-
+			
+            LinkConnSubStateSwitch(CONN_CONNECTED_TX); // 收到数据包则需要回复数据，切换到发送子状态
 			/*
-				非连接后的第一个包，则需要提取HostToLink队列中的数据发送
+                有数据发送，没数据回空包
 			*/
 			if( DH_SUCCESS == BleHostDataToLinkPop(&blkHostData) )
 			{
@@ -547,11 +547,10 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 			}
 			else
 			{
-					/* 没有数据就回空包*/
+					/* 没有数据就回空包 */
 				LinkSendData(DATA_PACKET, NULL, 0);
 				DEBUG_INFO("rsp empty");
 			}			
-            LinkConnSubStateSwitch(CONN_CONNECTED_TX);      // 收到数据包则需要回复数据，切换到发送子状态
 			BleLinkDataHandle();
 			DEBUG_INFO("recved packet,next anchor point:%d",u4SleepTimer);
 		}
@@ -594,6 +593,8 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 {
 	u4	u4CrcIV;			// crc初值 
 	u4	u4AccAddr;
+	u4  u4SleepTimer;
+	u4  debug_count1,debug_count2;
 	static u4	u4AnchorPoint;		// 主机第一个包发送过来的期望时间
 	s_blkConnStateInfo.m_u1PeerAddrType = addrType;
 	memcpy(s_blkConnStateInfo.m_pu1PeerAddr, pu1Addr, BLE_ADDR_LEN);
@@ -603,6 +604,11 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 	s_blkConnStateInfo.m_u1TransmitWindowSize = pu1LLData[LLDATA_WINSIZE_POS];
 	s_blkConnStateInfo.m_u2TransmitWindowOffset = pu1LLData[LLDATA_WINOFFSET_POS]+((pu1LLData[LLDATA_WINOFFSET_POS+1]<<8)&0xFF00);
 
+	/*
+		主机连接后第一个包发送过来的时间点
+		理论时间点是连连接请求数据包后 1.25 ms+transmitWindowOffset
+		实际需要减去RTC硬件机制误差和瞬时误差，让其提前唤醒等待主机的数据。
+	*/
 	u4AnchorPoint = FIXED_1_25_MS +s_blkConnStateInfo.m_u2TransmitWindowOffset*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME-PACKET_EXTEND_WINDOW;
 	/* u4AnchorPoint 还要减去这段时间由于rtc时钟源精度造成的误差，提前唤醒 */
 	u4AnchorPoint = u4AnchorPoint-GetTimerDeviation(u4AnchorPoint, s_blkConnStateInfo.m_u1PeerSCA, s_blkConnStateInfo.m_u1SelfSCA);
@@ -635,11 +641,16 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 	u4AccAddr = pu1LLData[LLDATA_AA_POS] + ((pu1LLData[LLDATA_AA_POS+1]<<8)&0xFF00) + ((pu1LLData[LLDATA_AA_POS+2]<<16)&0xFF0000) + ((pu1LLData[LLDATA_AA_POS+3]<<24)&0xFF000000);
 	BleRadioTxRxAddrCfg(0, u4AccAddr);	// 都是只支持一个连接，所以直接用逻辑0地址
 
-	/*
-		主机连接后第一个包发送过来的时间点
-		理论时间点是连连接请求数据包后 1.25 ms+transmitWindowOffset
-		实际需要减去RTC硬件机制误差和瞬时误差，让其提前唤醒等待主机的数据。
-	*/
+    debug_count1 = NrfRtc0CounterGet();
+   /* 先计算好免得在每次收到连接事件的第一个数据包时再计算耽误会回响应的速度或者导致计算下次事件的时间不准 */
+    u4SleepTimer = s_blkConnStateInfo.m_u2ConnInterval*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME-PACKET_EXTEND_WINDOW;
+	u4SleepTimer -= GetTimerDeviation(u4SleepTimer, s_blkConnStateInfo.m_u1PeerSCA, s_blkConnStateInfo.m_u1SelfSCA);
+	s_blkConnStateInfo.m_u4SleepTimer = u4SleepTimer;
+    
+    /* 超时也是先计算好，每个连接事件收到数据包了就刷新，timeout单位为10ms，interval单位是1.25ms。 8倍关系 */
+	s_blkConnStateInfo.m_u2connTimeoutBackup = s_blkConnStateInfo.m_u2ConnSupervisionTimeout*8/s_blkConnStateInfo.m_u2ConnInterval;
+    debug_count2 = NrfRtc0CounterGet();
+    DEBUG_INFO("debug_count1:%d   debug_count2:%d ",debug_count1, debug_count2);
 	DEBUG_INFO("tran offset:%d wind size:%d ,connected:%d",s_blkConnStateInfo.m_u2TransmitWindowOffset,s_blkConnStateInfo.m_u1TransmitWindowSize, u4AnchorPoint);
 }
 
