@@ -200,6 +200,7 @@ __INLINE static void  SwitchToNextChannel( u1 startFlag )
 __INLINE static void AdvRxWaitTimeoutHandler(void *pvalue)
 {
 	// 等待接收超时则关闭接收并切换到下一个通道广播
+	//BleAutoToRxDisable();
 	BleRadioDisable();
 	LinkAdvSubStateSwitch(ADV_RX_TIMEOUT);
 
@@ -234,7 +235,7 @@ __INLINE static void AdvTxScanRsp(void)
     	LinkAdvSubStateSwitch(ADV_TX_SCANRSP);
 		return ;
     }
-    /* 没有下一个通道则不广播，为广播空闲态*/
+
     LinkAdvSubStateSwitch(ADV_IDLE);	
 }
 
@@ -247,16 +248,14 @@ __INLINE static void AdvTxScanRsp(void)
 __INLINE static void HandleAdvTxDone(void)
 
 {
-	u1 channel;
 	EnAdvSubState	advState;
 
 	advState = s_blkAdvStateInfo.m_enAdvSubState;								//获取广播子状态
 	if ( ADV_TX == advState )
 	{
 		// 发送完成后在当前通道上开始接收
-		channel = s_blkAdvStateInfo.m_u1CurrentChannel;
-		DEBUG_INFO("rx:%d",channel);
-		BleRadioRxData(channel, s_blkAdvStateInfo.m_pu1LinkRxData);
+		DEBUG_INFO("rx:%d",s_blkAdvStateInfo.m_u1CurrentChannel);
+		BleRadioSimpleRx(s_blkAdvStateInfo.m_pu1LinkRxData);
 		LinkAdvSubStateSwitch(ADV_RX);
 		BleHAccuracyTimerStart(BLE_ADV_RX_TIMER, ADV_RX_WAIT_TIMEOUT, AdvRxWaitTimeoutHandler, NULL);		// 启动接收超时定时器
 	}
@@ -291,9 +290,10 @@ __INLINE static void HandleAdvRxDone(void)
 	*/	
 	if( selfType==RxAddType && memcmp(pu1Rx+8, s_blkAdvStateInfo.m_blkAddrInfo.m_pu1Addr, BLE_ADDR_LEN)==0 )
 	{
+	    //BleAutoToRxDisable();
 		if( PDU_TYPE_SCAN_REQ == pduType )
 		{
-		
+		    
 			BleHAccuracyTimerStop(BLE_ADV_RX_TIMER);	// 停止广播等待接收超时
 			AdvTxScanRsp();
 			DEBUG_INFO("scan req!!!");
@@ -325,6 +325,7 @@ static void LinkAdvRadioEvtHandler(EnBleRadioEvt evt)
 		}
 		else if( ADV_RX_TIMEOUT == s_blkAdvStateInfo.m_enAdvSubState )
 		{
+		    //BleAutoToRxEnable();
             SwitchToNextChannel(ADV_CHANNEL_SWITCH_TO_NEXT);
 		}
 	}
@@ -454,6 +455,7 @@ u4 LinkAdvStart(void)
     BleRadioWhiteIvCfg(whiteIv);
     s_blkAdvStateInfo.m_u1CurrentChannel = channel;
     BleLinkStateSwitch(BLE_LINK_ADVERTISING);					// 链路状态切换到广播态
+    //BleAutoToRxEnable();
     BleRadioTxData(channel, s_blkAdvStateInfo.m_pu1LinkTxData, BLE_PDU_LENGTH);	// 长度字段实际没有作用
 
     /* 启动广播间隔定时器，规范要求间隔应该加上一个 0-10ms的随机延迟，不过这里不实现了 */

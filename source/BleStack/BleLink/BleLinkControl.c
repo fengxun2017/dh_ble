@@ -36,9 +36,9 @@
 
 #define FEATURE_SUPPORT_LE_ENCY         (1<<0x00)
 
-#define LL_VERSION_COMPID				(0xFFFF)
+#define LL_VERSION_COMPID				(0x0059)
 #define LL_VERSION_VERSNR				(BLE_VERSION_NUMBER)
-#define LL_VERSION_SUBVERSNR			(0x0001)
+#define LL_VERSION_SUBVERSNR			(0x0022)
 
 #define TIMEOUT_PRT						(40000)		// 40s procedure response timeout
 

@@ -125,7 +125,7 @@ int main(void)
 	BleLinkInit();
 	LinkAdvDataCfg(test_data, sizeof(test_data));
 	LinkScanRspCfg(test_data2, sizeof(test_data2));
-	LinkAdvParamsCfg(channelOn, 20);
+	LinkAdvParamsCfg(channelOn, 200);
 	LinkAdvAddrInfoCfg(addr);
 	LinkAdvStart();
 	

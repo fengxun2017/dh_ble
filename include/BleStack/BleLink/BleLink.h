@@ -38,9 +38,9 @@ typedef struct
 
 typedef struct
 {
-	u1 m_pu1HostData[BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH];
 	u1 m_u1Length;					// buff中数据长度
 	u1 m_u1PacketFlag;
+	u1 m_pu1HostData[BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH];
 }BlkHostToLinkData;
 
 typedef struct

@@ -201,20 +201,22 @@ __INLINE void NrfRadioDisable(void){NRF_RADIO->TASKS_DISABLE = 1;}
 
 
 /**
- *@brief: 		NrfRadioAutoTx2RxEnable
- *@details:		配置发送结束后自动进入接收,需要在startTx之前调用配置
+ *@brief: 		NrfRadioAutoToRxEnable
+ *@details:		配置radio结束后自动进入接收准备状态，
+                这样每次发送完数据后，自动设置 TASK_RXEN，这样在程序从中断发生到中断处理过程中，radio自动进入到发送准备好状态
+                之后调用发送函数就可以立刻发送了。
 
  *@retval:		void
  */
-__INLINE void NrfRadioAutoTx2RxEnable(void){NRF_RADIO->SHORTS |= NRF_RADIO_SHORT_DISABLED_RXEN;}
+__INLINE void NrfRadioAutoToRxEnable(void){NRF_RADIO->SHORTS |= NRF_RADIO_SHORT_DISABLED_RXEN;}
 
 /**
- *@brief: 		NrfRadioAutoRx2TxCfg
- *@details:		配置发送结束后自动进入发送,需要在startRx之前调用配置
+ *@brief: 		NrfRadioAutoToTxEnable
+ *@details:		配置radio结束后自动进入发送准备状态
 
  *@retval:		void
  */
-__INLINE void NrfRadioAutoRx2TxEnable(void){NRF_RADIO->SHORTS |= NRF_RADIO_SHORT_DISABLED_TXEN;}
+__INLINE void NrfRadioAutoToTxEnable(void){NRF_RADIO->SHORTS |= NRF_RADIO_SHORT_DISABLED_TXEN;}
 
 
 /**
@@ -223,7 +225,7 @@ __INLINE void NrfRadioAutoRx2TxEnable(void){NRF_RADIO->SHORTS |= NRF_RADIO_SHORT
 
  *@retval:		void
  */
-__INLINE void NrfRadioAutoTx2RxDisable(void){NRF_RADIO->SHORTS &= ~(NRF_RADIO_SHORT_DISABLED_RXEN);}
+__INLINE void NrfRadioAutoToRxDisable(void){NRF_RADIO->SHORTS &= ~(NRF_RADIO_SHORT_DISABLED_RXEN);}
 
 
 /**
@@ -232,7 +234,7 @@ __INLINE void NrfRadioAutoTx2RxDisable(void){NRF_RADIO->SHORTS &= ~(NRF_RADIO_SH
 
  *@retval:		void
  */
-__INLINE void NrfRadioAutoRx2TxDisable(void){NRF_RADIO->SHORTS &= ~(NRF_RADIO_SHORT_DISABLED_TXEN);}
+__INLINE void NrfRadioAutoToTxDisable(void){NRF_RADIO->SHORTS &= ~(NRF_RADIO_SHORT_DISABLED_TXEN);}
 
 
 

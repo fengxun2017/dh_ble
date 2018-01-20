@@ -66,6 +66,12 @@
 
 #define CHANNEL_MAP_UPDATING        (1) 
 #define CHANNEL_MAP_UPDATED         (0)
+
+#define LINK_RX_OLD_DATA            (1)
+#define LINK_RX_NEW_DATA            (2)
+#define LINK_TX_NEW_DATA            (4)
+#define LINK_TX_OLD_DATA            (8)
+
 typedef enum
 {
 	CONN_IDLE = 0,
@@ -154,8 +160,8 @@ SN,NESN: 响应机制。 收到的NESN是告诉自己对方有没有收到前一
 	
 }BlkConnStateInfo;
 
-
-static u1	LINK_CONN_STATE_TX_BUFF[BLE_PDU_LENGTH];
+/* 初值设置成空包,用来回复第一包数据 */
+static u1	LINK_CONN_STATE_TX_BUFF[BLE_PDU_LENGTH] = {0x05,0x00};   
 static u1	LINK_CONN_STATE_RX_BUFF[BLE_PDU_LENGTH];
 static u2	SCA_TO_PPM[BLE_SCA_GRADE_NUMBER] = {500, 250, 150, 100, 75, 50, 30, 20};
 
@@ -209,30 +215,36 @@ __INLINE static u4 GetTimerDeviation(u4 u4TimeUs, u1 peerSCA, u1 selfSCA)
  				
  *@retval:		void
  */
-__INLINE static void UpdateSeqNum(u1 SN, u1 NESN )
+__INLINE static u4 UpdateSeqNum(u1 SN, u1 NESN )
 {
 	u1	selfSN = s_blkConnStateInfo.m_u1TransmitSeqNum;
 	u1	selfNESN = s_blkConnStateInfo.m_u1NextExpectedSeqNum;
-
+    u4  ret = 0;
 	if( SN == selfNESN )
 	{
 		/* 是期望收到的包，则更新NESN */
 		s_blkConnStateInfo.m_u1NextExpectedSeqNum = 1-selfNESN;
+		ret |= LINK_RX_NEW_DATA;
 	}
 	else
 	{
 		/* 是对方重发的包，NESN不更新。可能对方前一个发送的包在空中丢了，或者我收到了但是crc错了，我也不会更新NESN，这样对方收不到ack就重发*/
+		ret |= LINK_RX_OLD_DATA;
 	}
 
 	if( NESN == selfSN )
 	{
 		/* 对方没有对我上一个发的包回ack,所以不更新SN，要重发 */
+		ret |= LINK_TX_OLD_DATA;
 	}
 	else
 	{
 		/* 更新SN */
 		s_blkConnStateInfo.m_u1TransmitSeqNum = 1-selfSN;
+		ret |= LINK_TX_NEW_DATA;
 	}
+
+	return ret;
 }
 
 /**
@@ -291,6 +303,17 @@ __INLINE static void CfgCurrentDataChannel(u1 channel)
 	s_blkConnStateInfo.m_u1CurrentChannel = channel;
 }
 
+/* 重发上一次发送的包*/
+__INLINE static void LinkResendData(void)
+{
+    u2 len;
+	u1 nesn = s_blkConnStateInfo.m_u1NextExpectedSeqNum; //重发包nesn还是要变的
+
+    LINK_CONN_STATE_TX_BUFF[0] &= ~(1<<DATA_HEAD_NESN_POS);
+    LINK_CONN_STATE_TX_BUFF[0] |= (nesn<<DATA_HEAD_NESN_POS);
+    len = LINK_CONN_STATE_TX_BUFF[1]&0x1F;
+	BleRadioSimpleTx(LINK_CONN_STATE_TX_BUFF, BLE_PDU_HEADER_LENGTH+len);
+}
 __INLINE static void LinkSendData(u1 u1PacketFlag, u1 *pu1Data, u2 u2len)
 {
 	u1	sn,nesn,md,llid,len;
@@ -343,11 +366,6 @@ __INLINE static void BleLinkDataHandle(void)
 	u1	len;
 	u2  u2Instant;
 	
-	if( !IsBleRadioCrcOk() )
-	{
-		DEBUG_INFO("CRC error!!!");
-		return ;
-	}
 	pHeader = (BlkBlePduHeader *)LINK_CONN_STATE_RX_BUFF;
 	len = pHeader->m_u1Header2 & 0x1F;	
 
@@ -512,22 +530,55 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 {
 	u1	peerSN;
 	u1	peerNESN;
+	u4  ret;
 	static u4	u4SleepTimer;
-	BlkHostToLinkData blkHostData;
+	static BlkHostToLinkData blkHostData = {0x00,DATA_PACKET,0x00}; //初值设置为空包
 
 	if( BLE_RADIO_EVT_TRANS_DONE == evt )	/* 发送完成或接收完成*/
 	{
 		if( s_blkConnStateInfo.m_enConnSubState&BLE_CONN_SUB_STATE_RX_MASK )		//接收状态
 		{
+		    /* 先打开发送，nordic打开发送有一个130us左右的时间 */
+		    /* STEP 1*/
+		    NrfRadioStartTx();          //<----------------------------------------提前让ble进入发送准备状态
+        	if( !IsBleRadioCrcOk() )
+        	{
+        		DEBUG_INFO("CRC error!!!");
+        		/* CRC错误直接回空包，规范要求连续2个包crc错误应该关闭本次连接事件 */
+        		LinkSendData(DATA_PACKET, NULL, 0); 
+			    return ;
+			}
+		
 			BleHAccuracyTimerStop(RECV_PACKET_HA_TIMER);		// 停止接收监听定时器
 			BleLPowerTimerStop(WAIT_PACKET_SLEEP_TIMER);        
 			ExtractRecvPacketSn(&peerSN, &peerNESN);
-			UpdateSeqNum(peerSN, peerNESN);
-			
+			ret = UpdateSeqNum(peerSN, peerNESN);
+            /* STEP 2: 从step 1 到实际调用发送调试时发现需要70us左右，影响了ble的时序，
+                        所以STEP 1处直接先调用发送，因为nordic本身发送需要一个130ms的发送启动时间
+                        这样就可以利用这130us中的70us来先处理一下紧急的事情
+            */
+            LinkConnSubStateSwitch(CONN_CONNECTED_TX); // 收到数据包则需要回复数据，切换到发送子状态
+			if( LINK_RX_OLD_DATA & ret )
+			{
+			    /* 收到重发包，回空包 */
+                LinkSendData(DATA_PACKET, NULL, 0); 
+			}
+			else if( LINK_TX_OLD_DATA & ret )
+			{
+			    /* 对方没有对上一个包回ack，需要重发 */
+                LinkResendData();
+			}
+			else 
+			{
+    			/*
+                    有数据发送，没数据回空包
+    			*/
+    			LinkSendData(blkHostData.m_u1PacketFlag, blkHostData.m_pu1HostData, blkHostData.m_u1Length);
+			}
 			/* 
 				每次收到数据都刷新一下
 			*/
-			s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter = s_blkConnStateInfo.m_u2connTimeoutBackup
+			s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter = s_blkConnStateInfo.m_u2connTimeoutBackup;
 
 			/*
 				收到本次连接事件的第一个数据包了，确定了anchor point
@@ -536,23 +587,24 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 			u4SleepTimer = s_blkConnStateInfo.m_u4SleepTimer;
 			BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStateRxPacketHandler, &u4SleepTimer);
 			
-            LinkConnSubStateSwitch(CONN_CONNECTED_TX); // 收到数据包则需要回复数据，切换到发送子状态
-			/*
-                有数据发送，没数据回空包
-			*/
+			if( ret&LINK_RX_NEW_DATA )
+			{
+			    BleLinkDataHandle();
+			}
+
+			DEBUG_INFO("recved packet,next anchor point:%d",u4SleepTimer);
+
+			/* 先设置好下次要发送的数据 */
 			if( DH_SUCCESS == BleHostDataToLinkPop(&blkHostData) )
 			{
-				LinkSendData(blkHostData.m_u1PacketFlag, blkHostData.m_pu1HostData, blkHostData.m_u1Length);
-				DEBUG_INFO("tx :");DEBUG_DATA(LINK_CONN_STATE_TX_BUFF, BLE_PDU_HEADER_LENGTH+blkHostData.m_u1Length);
+				DEBUG_INFO("next tx :");DEBUG_DATA(LINK_CONN_STATE_TX_BUFF, BLE_PDU_HEADER_LENGTH+blkHostData.m_u1Length);
 			}
 			else
 			{
-					/* 没有数据就回空包 */
-				LinkSendData(DATA_PACKET, NULL, 0);
-				DEBUG_INFO("rsp empty");
-			}			
-			BleLinkDataHandle();
-			DEBUG_INFO("recved packet,next anchor point:%d",u4SleepTimer);
+				blkHostData.m_u1Length = 0;
+				blkHostData.m_u1PacketFlag = DATA_PACKET;
+				DEBUG_INFO("next rsp empty");
+			}	
 		}
 		else if ( CONN_CONNECTED_TX == s_blkConnStateInfo.m_enConnSubState )
 		{
@@ -594,7 +646,6 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 	u4	u4CrcIV;			// crc初值 
 	u4	u4AccAddr;
 	u4  u4SleepTimer;
-	u4  debug_count1,debug_count2;
 	static u4	u4AnchorPoint;		// 主机第一个包发送过来的期望时间
 	s_blkConnStateInfo.m_u1PeerAddrType = addrType;
 	memcpy(s_blkConnStateInfo.m_pu1PeerAddr, pu1Addr, BLE_ADDR_LEN);
@@ -641,7 +692,6 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 	u4AccAddr = pu1LLData[LLDATA_AA_POS] + ((pu1LLData[LLDATA_AA_POS+1]<<8)&0xFF00) + ((pu1LLData[LLDATA_AA_POS+2]<<16)&0xFF0000) + ((pu1LLData[LLDATA_AA_POS+3]<<24)&0xFF000000);
 	BleRadioTxRxAddrCfg(0, u4AccAddr);	// 都是只支持一个连接，所以直接用逻辑0地址
 
-    debug_count1 = NrfRtc0CounterGet();
    /* 先计算好免得在每次收到连接事件的第一个数据包时再计算耽误会回响应的速度或者导致计算下次事件的时间不准 */
     u4SleepTimer = s_blkConnStateInfo.m_u2ConnInterval*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME-PACKET_EXTEND_WINDOW;
 	u4SleepTimer -= GetTimerDeviation(u4SleepTimer, s_blkConnStateInfo.m_u1PeerSCA, s_blkConnStateInfo.m_u1SelfSCA);
@@ -649,8 +699,6 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
     
     /* 超时也是先计算好，每个连接事件收到数据包了就刷新，timeout单位为10ms，interval单位是1.25ms。 8倍关系 */
 	s_blkConnStateInfo.m_u2connTimeoutBackup = s_blkConnStateInfo.m_u2ConnSupervisionTimeout*8/s_blkConnStateInfo.m_u2ConnInterval;
-    debug_count2 = NrfRtc0CounterGet();
-    DEBUG_INFO("debug_count1:%d   debug_count2:%d ",debug_count1, debug_count2);
 	DEBUG_INFO("tran offset:%d wind size:%d ,connected:%d",s_blkConnStateInfo.m_u2TransmitWindowOffset,s_blkConnStateInfo.m_u1TransmitWindowSize, u4AnchorPoint);
 }
 

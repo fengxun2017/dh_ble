@@ -151,7 +151,7 @@ void BleRadioTxData( u1 u1channel, u1 *pu1Data, u2 len )
 void BleRadioSimpleTx(u1 *pu1Data, u2 len)
 {
     NrfRadioPacketPtrCfg( pu1Data );
-    NrfRadioStartTx();
+//    NrfRadioStartTx();
 }
 
 /**
@@ -172,6 +172,18 @@ void BleRadioRxData( u1 u1Channel, u1 *pu1Data )
     NrfRadioStartRx();
 }
 
+/**
+ *@brief: 		BleRadioSimpleRx
+ *@details:		ble接收数据，直接在当前通道下接收不做通道切换操作
+ *@param[in]	pu1Data  
+ 
+ *@retval:		void
+ */
+void BleRadioSimpleRx(u1 *pu1Data)
+{
+    NrfRadioPacketPtrCfg( pu1Data );
+    NrfRadioStartRx();
+}
 
 /**
  *@brief: 		IsBleRadioCrcOk
@@ -195,5 +207,15 @@ u1 IsBleRadioCrcOk( void )
 void BleRadioDisable( void )
 {
     NrfRadioDisable();
+}
+
+void BleAutoToRxEnable(void)
+{
+    NrfRadioAutoToRxEnable();
+}
+
+void BleAutoToRxDisable(void)
+{
+    NrfRadioAutoToRxDisable();
 }
 
