@@ -106,17 +106,18 @@ void LinkRspUnknown(u1 opcode)
 }
 
 /**
- *@brief: 		CheckLinkChannelMapUpdate
+ *@brief: 		CheckLinkChannelMapUpdateReq
  *@details:		检查链路控制请求是否是channel map update
  *@param[in]	pu1PDU              链路PDU
  *@param[out]	pu1NewChannelMap    返回新的通道映射
  *@param[out]	u2Instant           返回通道改变的时间点
 
- *@note 通道更新请求需要立刻处理，因为链路数据都是通过下半部处理的，有延迟。所以不能放在 BleLinkControlHandle 函数中处理
-        需要直接在链路数据接收中断里处理
+ *@note 通道更新请求需要立刻处理，虽然规范要求了对方必须需要给的缓冲时间需要多于6个间隔，
+        但是链路数据都是通过下半部处理的，延迟不确定。所以不放在 BleLinkControlHandle 函数中处理
+        直接在链路数据接收中断里处理
  *@retval:		DH_SUCCESS
  */
-u4 CheckLinkChannelMapUpdate(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *u2Instant)
+u4 CheckLinkChannelMapUpdateReq(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *u2Instant)
 {
     u1  llid;
     u1  opcode;
@@ -144,8 +145,36 @@ u4 CheckLinkChannelMapUpdate(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *u2Instant)
         }
     }
 
-    return ERR_LINK_NOT_CHANNEL_MAP_REQ;
+    return ERR_LINK_NOT_CHANNEL_MAP_REQ;    // 不是channel map控制请求
 }
+
+u4 CheckLinkConnUpdateReq(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *u2Instant)
+{
+    u1  llid;
+    u1  opcode;
+    u2  len;
+    u1  index = 0;
+
+    if( NULL==pu1PDU || NULL==pu1NewChannelMap )
+    {
+        return ERR_LINK_INVALID_PARAMS;
+    }
+    
+    llid = pu1PDU[index++]&0x03;
+    len = pu1PDU[index++]&0x1f;
+    if ( LLID_CONTROL==llid && len>0 )
+    {
+        opcode = pu1PDU[index++];
+        if( LL_CONNECTION_UPDATE_REQ == opcode )
+        {
+
+            return DH_SUCCESS;
+        }
+    }
+
+    return ERR_LINK_NOT_CONN_UPDATE_REQ;    // 不是conn update控制请求
+}
+
 u4 BleLinkControlHandle(u1 *pu1Data, u2 len)
 {
 	u1	opcode;
@@ -154,6 +183,9 @@ u4 BleLinkControlHandle(u1 *pu1Data, u2 len)
 
 	switch(opcode)
 	{
+        case LL_CONNECTION_UPDATE_REQ:
+        break;
+	
 		case LL_FEATURE_REQ:
 			LinkFeatureReqHandle(pu1Data+0x01, len-1);
 		break;

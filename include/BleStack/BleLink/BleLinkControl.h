@@ -15,7 +15,7 @@ extern "C"{
 #endif
 #endif /* __cplusplus */
 extern u4 BleLinkControlHandle(u1 *pu1Data, u2 len);
-extern u4 CheckLinkChannelMapUpdate(u1 *pu1Data, u1 *pu1NewChannelMap, u2 *u2Instant);
+extern u4 CheckLinkChannelMapUpdateReq(u1 *pu1Data, u1 *pu1NewChannelMap, u2 *u2Instant);
 
 
 #ifdef __cplusplus

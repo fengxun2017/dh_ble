@@ -135,11 +135,15 @@ SN,NESN: 响应机制。 收到的NESN是告诉自己对方有没有收到前一
 	u1	m_u1TransmitWindowSize;					/* 连接建立过程中的监听窗口 1.25ms为单位,1.25 ms to the lesser of 10 ms and (connInterval - 1.25 ms).窗口开始时间为收到连接请求后的transmitWindowOffset + 1.25ms */
 	u2	m_u2TransmitWindowOffset;				/* 监听窗口偏移 1.25ms为单位,0 ms——connInterval*/
 	u2	m_u2ConnInterval;						/* 连接间隔 1.25ms为单位         7.5ms-4s*/
+	u2  m_u2ConnIntervalNew;
 	u2	m_u2ConnSlaveLatency;					/* 从机延迟--从机可以跳过几个连接时间不监听，降低功耗。0——((connSupervisionTimeout/ connInterval) - 1)，不能大于500
 													如果延迟后没有收到主机包，则后续的每个连接事件都应该监听，知道收到数据包后才能再应用这个参数。*/
+    u2  m_u2ConnSlaveLatencyNew;													
 	u2	m_u2ConnSupervisionTimeout;				/* 连接超时--10ms为单位，100 ms —— 32.0 s并且大于(1 + connSlaveLatency) * connInterval。连接建立过程如果超过6个connInterval时间，则认为建立失败 */
+    u2  m_u2ConnSupervisionTimeoutNew;             	
 	u2	m_u2ConnSupervisionTimeoutCounter;		/* 没有资源对超时单独创建定时器，超时时间不需要精确，这里用一个计数器，以connInterval为单位来计数*/
 	u2  m_u2connTimeoutBackup;                  /* 连接监控超时备份 */
+	u2  m_u2ConnUpdateInstant;                  /* 连接参数更新的时间点 */
 	u1	m_pu1ChannelMap[BLE_CHANNEL_MAP_LEN];	/* 通道映射图，指示可用通道 ,LSB
 													The LSB represents data channel index 0 and the bit in position 36 represents data channel index 36.*/
 	u1  m_pu1NewChannelMap[BLE_CHANNEL_MAP_LEN];
@@ -212,23 +216,25 @@ __INLINE static u4 GetTimerDeviation(u4 u4TimeUs, u1 peerSCA, u1 selfSCA)
  *@details:		更新自己的sn和nesn
  *@param[in]	SN			对方发过来的数据包中的SN 
  *@param[in]	NESN  		对方发过来的数据包中的NESN
- 				
+ *@param[in]	crcTrue  	接收到的数据包crc是否正确
  *@retval:		void
  */
-__INLINE static u4 UpdateSeqNum(u1 SN, u1 NESN )
+__INLINE static u4 UpdateSeqNum(u1 SN, u1 NESN, u1 crcTrue )
 {
 	u1	selfSN = s_blkConnStateInfo.m_u1TransmitSeqNum;
 	u1	selfNESN = s_blkConnStateInfo.m_u1NextExpectedSeqNum;
     u4  ret = 0;
-	if( SN == selfNESN )
+    
+    /* 如果crc错了不更新nesn */
+	if( SN == selfNESN && crcTrue)
 	{
 		/* 是期望收到的包，则更新NESN */
 		s_blkConnStateInfo.m_u1NextExpectedSeqNum = 1-selfNESN;
 		ret |= LINK_RX_NEW_DATA;
 	}
-	else
+	else    /* crc错了也当成接收到重发包好了，因为重发包不处理 */
 	{
-		/* 是对方重发的包，NESN不更新。可能对方前一个发送的包在空中丢了，或者我收到了但是crc错了，我也不会更新NESN，这样对方收不到ack就重发*/
+		/* 是对方重发的包，NESN不更新。可能我回         的ack对方没收到，或  者我收到了对方的包crc错了，所以没有更新NESN回空包，这样对方收不到ack就重发*/
 		ret |= LINK_RX_OLD_DATA;
 	}
 
@@ -370,7 +376,7 @@ __INLINE static void BleLinkDataHandle(void)
 	len = pHeader->m_u1Header2 & 0x1F;	
 
     /* channelMap 更新控制过程需要单独特殊处理，不能延后软中断里面处理 */
-	if( DH_SUCCESS== CheckLinkChannelMapUpdate(LINK_CONN_STATE_RX_BUFF, pu1NewChannelMap, &u2Instant) )
+	if( DH_SUCCESS== CheckLinkChannelMapUpdateReq(LINK_CONN_STATE_RX_BUFF, pu1NewChannelMap, &u2Instant) )
 	{
 	    /* 相减最高位为1说明溢出了 */
 	    if( (u2Instant-s_blkConnStateInfo.m_u2ConnEventCounter) >= 32767)
@@ -385,6 +391,7 @@ __INLINE static void BleLinkDataHandle(void)
             s_blkConnStateInfo.m_u1ChannelMapNeedUpdateFlag = CHANNEL_MAP_UPDATING;
             s_blkConnStateInfo.m_u1ChannelMapUpdateInstant = u2Instant;
         }
+        return DH_SUCCESS;
 	}
 	/* 非空包才处理*/
 	if( len>0 )
@@ -531,6 +538,7 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 	u1	peerSN;
 	u1	peerNESN;
 	u4  ret;
+	u1  crcTrue = 1;
 	static u4	u4SleepTimer;
 	static BlkHostToLinkData blkHostData = {0x00,DATA_PACKET,0x00}; //初值设置为空包
 
@@ -541,31 +549,31 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 		    /* 先打开发送，nordic打开发送有一个130us左右的时间 */
 		    /* STEP 1*/
 		    NrfRadioStartTx();          //<----------------------------------------提前让ble进入发送准备状态
-        	if( !IsBleRadioCrcOk() )
-        	{
-        		DEBUG_INFO("CRC error!!!");
-        		/* CRC错误直接回空包，规范要求连续2个包crc错误应该关闭本次连接事件 */
-        		LinkSendData(DATA_PACKET, NULL, 0); 
-			    return ;
-			}
+            if( !IsBleRadioCrcOk() )
+            {
+                DEBUG_INFO("CRC error!!!");
+                /* CRC错误直接回空包，规范要求连续2个包crc错误应该关闭本次连接事件 */
+                crcTrue = 0;
+                return ;
+            }
+
 		
 			BleHAccuracyTimerStop(RECV_PACKET_HA_TIMER);		// 停止接收监听定时器
 			BleLPowerTimerStop(WAIT_PACKET_SLEEP_TIMER);        
 			ExtractRecvPacketSn(&peerSN, &peerNESN);
-			ret = UpdateSeqNum(peerSN, peerNESN);
+			ret = UpdateSeqNum(peerSN, peerNESN, crcTrue);
             /* STEP 2: 从step 1 到实际调用发送调试时发现需要70us左右，影响了ble的时序，
                         所以STEP 1处直接先调用发送，因为nordic本身发送需要一个130ms的发送启动时间
                         这样就可以利用这130us中的70us来先处理一下紧急的事情
             */
-            LinkConnSubStateSwitch(CONN_CONNECTED_TX); // 收到数据包则需要回复数据，切换到发送子状态
-			if( LINK_RX_OLD_DATA & ret )
+            if( !crcTrue )
+            {
+                /* crc错了回空包，不过自己nesn没有更新，这样对方收不到ack就会重发 */
+                LinkSendData(DATA_PACKET, NULL, 0);
+            }
+			else if( LINK_RX_OLD_DATA&ret || LINK_TX_OLD_DATA&ret )
 			{
-			    /* 收到重发包，回空包 */
-                LinkSendData(DATA_PACKET, NULL, 0); 
-			}
-			else if( LINK_TX_OLD_DATA & ret )
-			{
-			    /* 对方没有对上一个包回ack，需要重发 */
+			    /* crc正确，无论是收到对方重发的包，还是对方没有对我回ack，都可以通过重发上一个包解决 */
                 LinkResendData();
 			}
 			else 
@@ -575,6 +583,7 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
     			*/
     			LinkSendData(blkHostData.m_u1PacketFlag, blkHostData.m_pu1HostData, blkHostData.m_u1Length);
 			}
+            LinkConnSubStateSwitch(CONN_CONNECTED_TX); // 收到数据包则需要回复数据，切换到发送子状态
 			/* 
 				每次收到数据都刷新一下
 			*/
@@ -587,7 +596,7 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 			u4SleepTimer = s_blkConnStateInfo.m_u4SleepTimer;
 			BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStateRxPacketHandler, &u4SleepTimer);
 			
-			if( ret&LINK_RX_NEW_DATA )
+			if( crcTrue )
 			{
 			    BleLinkDataHandle();
 			}
