@@ -8,7 +8,6 @@
 #define __BLELINKCONTROL_H__
 #include "../../DhGlobalHead.h"
 
-
 #ifdef __cplusplus
 #if __cplusplus
 extern "C"{
@@ -16,6 +15,7 @@ extern "C"{
 #endif /* __cplusplus */
 extern u4 BleLinkControlHandle(u1 *pu1Data, u2 len);
 extern u4 CheckLinkChannelMapUpdateReq(u1 *pu1Data, u1 *pu1NewChannelMap, u2 *u2Instant);
+extern u4 CheckLinkConnUpdateReq(u1 *pu1PDU, u1 *u1WinSize, u2 *u2WinOffset, u2 *u2Interval, u2 *u2Latency, u2 *u2Timeout, u2 *u2Instant);
 
 
 #ifdef __cplusplus

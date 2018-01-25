@@ -166,7 +166,7 @@ __INLINE static u4 AttMtuRsp( u2 MTU )
 
     pu1Rsp[index++] = ATT_OPCODE_MTU_EXCHANGE_RSP;
     pu1Rsp[index++] = MTU & 0xff;
-    pu1Rsp[index++] = MTU >> 8;
+    pu1Rsp[index++] = (MTU >> 8)&0xFF;
 
     if( BleL2capDataSend( BLE_L2CAP_ATT_CHANNEL_ID, pu1Rsp, index ) != DH_SUCCESS )
     {
@@ -308,7 +308,7 @@ __INLINE static u4 AttWriteRsp(void)
  */
 static u4 AttFindInfoReqHandle( u1  *pu1Req, u2 len )
 {
-    BlkBleAttribute *pblkAtt;
+    BlkBleAttribute *pblkAtt = NULL;
     u2	u2StartHandle = ATT_INVALID_HANDLE;
     u2	u2EndHandle = ATT_INVALID_HANDLE;
     u2	u2AttHandle = ATT_INVALID_HANDLE;
@@ -316,16 +316,16 @@ static u4 AttFindInfoReqHandle( u1  *pu1Req, u2 len )
     u4	ret;
     u1	uuidFormat;
     u1	pu1Rsp[BLE_ATT_MTU_SIZE - 2];   /* 去掉opcode和formate所占字节 */
-    u1	rspLen = 0;
+    u2	rspLen = 0;
 
     if( NULL == pu1Req )
     {
         return ERR_ATT_INVALID_PARAMS;
     }
     u2StartHandle = pu1Req[index++];
-    u2StartHandle += ( pu1Req[index++] << 8 ) & 0xff00;
+    u2StartHandle += ((pu1Req[index++]<<8) & 0xff00);
     u2EndHandle = pu1Req[index++];
-    u2EndHandle += ( pu1Req[index++] << 8 ) & 0xff00;
+    u2EndHandle += ((pu1Req[index++]<<8) & 0xff00);
     if ( ATT_FIND_INFO_REQ_LEN != len )
     {
         ret = AttErrRsp( ATT_OPCODE_FIND_INFO_REQ, u2StartHandle, ATT_ERR_INVALID_PDU );
@@ -361,19 +361,21 @@ static u4 AttFindInfoReqHandle( u1  *pu1Req, u2 len )
             /* uuid的类型实际值就是UUID的长度 */
             rspLen += pblkAtt->attType.uuidType;
         }
-        else	/* pblk==NULL */
-        {   
-            /* 一个都没找到 */
-            if ( u2AttHandle == u2StartHandle )
-            {
-                return AttErrRsp( ATT_OPCODE_FIND_INFO_REQ, u2AttHandle, ATT_ERR_ATTRIBUTE_NOT_FOUND );
-            }
-            /* 当前的句柄已经找不到att了，那么后续的肯定也找不到了，直接返回已经找到的 */
-            return AttFindInfoRsp( uuidFormat, pu1Rsp, rspLen );
-        }
+		else
+		{
+			/* 属性都是连续放在属性数据库的，查到了NULL,则后续都没有属性了 */
+			break;
+		}
     }
 
-    return DH_SUCCESS;
+	if( rspLen > 0 )
+    {
+        return AttFindInfoRsp( uuidFormat, pu1Rsp, rspLen );
+    }
+    else 
+    {
+        return AttErrRsp( ATT_OPCODE_FIND_INFO_REQ, u2AttHandle, ATT_ERR_ATTRIBUTE_NOT_FOUND );
+    }
 }
 
 /**
@@ -386,9 +388,9 @@ static u4 AttFindInfoReqHandle( u1  *pu1Req, u2 len )
  */
 static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
 {
-    BlkBleAttribute *pblkAtt;
+    BlkBleAttribute *pblkAtt = NULL;
     u1	index = 0;
-    u1	rspLen = 0;
+    u2	rspLen = 0;
     u1  eachAttDataLen = 0;
     u1	pu1Rsp[BLE_ATT_MTU_SIZE - 2]; /* 去掉opcode和length所占字节 */
     u1	pu1AttValue[BLE_ATT_MTU_SIZE - 2 - 4]; /* Attribute Data List 响应格式为AttHandle(2B) EndGroupHandle(2B) AttValue */
@@ -406,9 +408,9 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
         return ERR_ATT_INVALID_PARAMS;
     }
     u2StartHandle = pu1Req[index++];
-    u2StartHandle += ( pu1Req[index++] << 8 ) & 0xff00;
+    u2StartHandle += ((pu1Req[index++]<<8) & 0xff00);
     u2EndHandle = pu1Req[index++];
-    u2EndHandle += ( pu1Req[index++] << 8 ) & 0xff00;
+    u2EndHandle += ((pu1Req[index++]<<8)&0xff00);
 
     if( ATT_READ_BY_GROUP_TYPE_REQ_SHORT != len && ATT_READ_BY_GROUP_TYPE_REQ_LONG != len )
     {
@@ -431,7 +433,7 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
     {
         return AttErrRsp( ATT_OPCODE_READ_BY_GROUP_TYPE_REQ, u2StartHandle, ATT_ERR_UNSUPPORTED_GROUP_TYPE );
     }
-    for( u2AttHandle = u2StartHandle; u2AttHandle < u2EndHandle; u2AttHandle++ )
+    for( u2AttHandle = u2StartHandle; u2AttHandle <= u2EndHandle; u2AttHandle++ )
     {
         BleGattFindAttByHandle( u2AttHandle, &pblkAtt );
         if( NULL != pblkAtt )
@@ -449,7 +451,7 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
                     memcpy( pu1Rsp + rspLen, pu1AttValue, u1AttValueLen );
                     rspLen += u1AttValueLen;
                     /* Attribute Data List 响应格式为AttHandle(2B) EndGroupHandle(2B) AttValue */
-                    if( ( rspLen + pblkAtt->attValue.u2CurrentLen + 4 ) > sizeof( pu1Rsp ) || (pblkAtt->attValue.u2CurrentLen+4)!=eachAttDataLen )
+                    if( ( rspLen + pblkAtt->attValue.u2CurrentLen + 4 )>sizeof( pu1Rsp ) || (pblkAtt->attValue.u2CurrentLen+4)!=eachAttDataLen )
                     {
                         /* 数据已经放不下了，或者格式和前面已经保存的不一样，返回当前已经找到的 */
                         return AttReadByGroupTypeRsp(eachAttDataLen, pu1Rsp, rspLen );
@@ -469,20 +471,32 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
                 eachAttDataLen = 4+pblkAtt->attValue.u2CurrentLen;
             }
         }
-        else    /* 已经没有属性了 */
-        {
-            if( rspLen > 0 )
-            {
-                return AttReadByGroupTypeRsp(eachAttDataLen, pu1Rsp, rspLen );
-            }
-            else
-            {   
-                /* 一个都没找到 */
-                return AttErrRsp(ATT_OPCODE_READ_BY_GROUP_TYPE_REQ, u2StartHandle, ATT_ERR_ATTRIBUTE_NOT_FOUND);
-            }
-        }
+		else
+		{
+			/* 属性都是连续放在属性数据库的，查到了NULL,则后续都没有属性了 */
+			break;
+		}
     }
-    return DH_SUCCESS;
+    /* 还需要设置一下最后一个服务的信息 */
+    if( ATT_INVALID_HANDLE != u2GroupStartHandle )
+    {
+        u2GroupEndHandle = u2AttHandle - 1;         // 前面一个att属于上一个服务的最后一个att
+        pu1Rsp[rspLen++] = u2GroupStartHandle & 0xff;
+        pu1Rsp[rspLen++] = ( u2GroupStartHandle >> 8 ) & 0xff;
+        pu1Rsp[rspLen++] = u2GroupEndHandle & 0xff;
+        pu1Rsp[rspLen++] = ( u2GroupEndHandle >> 8 ) & 0xff;
+        memcpy( pu1Rsp + rspLen, pu1AttValue, u1AttValueLen );
+        rspLen += u1AttValueLen;    
+    }
+    if( rspLen > 0 )
+    {
+        return AttReadByGroupTypeRsp(eachAttDataLen, pu1Rsp, rspLen );
+    }
+    else
+    {   
+        /* 一个都没找到 */
+        return AttErrRsp(ATT_OPCODE_READ_BY_GROUP_TYPE_REQ, u2StartHandle, ATT_ERR_ATTRIBUTE_NOT_FOUND);
+    }    
 }
 
 /**
@@ -495,9 +509,9 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
  */
 static u4 AttReadByTypeReqHandle( u1 *pu1Req, u2 len )
 {
-    BlkBleAttribute *pblkAtt;
+    BlkBleAttribute *pblkAtt = NULL;
     u1	index = 0;
-    u1	rspLen = 0;
+    u2	rspLen = 0;
     u1  eachAttDataLen = 0;
     u1	pu1Rsp[BLE_ATT_MTU_SIZE - 2];           // 去掉opcode和length所占字节
     u2	u2StartHandle = ATT_INVALID_HANDLE;
@@ -511,9 +525,9 @@ static u4 AttReadByTypeReqHandle( u1 *pu1Req, u2 len )
         return ERR_ATT_INVALID_PARAMS;
     }
     u2StartHandle = pu1Req[index++];
-    u2StartHandle += ( pu1Req[index++] << 8 ) & 0xff00;
+    u2StartHandle += ((pu1Req[index++]<<8) & 0xff00);
     u2EndHandle = pu1Req[index++];
-    u2EndHandle += ( pu1Req[index++] << 8 ) & 0xff00;
+    u2EndHandle += ((pu1Req[index++]<<8) & 0xff00);
     if( ATT_READ_BY_TYPE_REQ_SHORT != len && ATT_READ_BY_TYPE_REQ_LONG != len )
     {
         return AttErrRsp( ATT_OPCODE_READ_BY_TYPE_REQ, u2StartHandle, ATT_ERR_INVALID_PDU );
@@ -531,7 +545,7 @@ static u4 AttReadByTypeReqHandle( u1 *pu1Req, u2 len )
         uuidType = UUID_TYPE_128BIT;
     }
     memcpy( pu1FindType, pu1Req + index, uuidType );
-    for( u2AttHandle = u2StartHandle; u2AttHandle < u2EndHandle; u2AttHandle++ )
+    for( u2AttHandle = u2StartHandle; u2AttHandle <= u2EndHandle; u2AttHandle++ )
     {
         BleGattFindAttByHandle( u2AttHandle, &pblkAtt );
         if( NULL != pblkAtt )
@@ -556,20 +570,20 @@ static u4 AttReadByTypeReqHandle( u1 *pu1Req, u2 len )
                 rspLen += pblkAtt->attValue.u2CurrentLen;
             }
         }
-        else    /* 已经没有属性了 */
-        {
-            if( rspLen > 0 )
-            {
-                return AttReadByGroupTypeRsp(eachAttDataLen, pu1Rsp, rspLen );
-            }
-            else
-            {   
-                /* 一个都没找到 */
-                return AttErrRsp(ATT_OPCODE_READ_BY_TYPE_REQ, u2StartHandle, ATT_ERR_ATTRIBUTE_NOT_FOUND);
-            }
-        }
+		else
+		{
+			/* 属性都是连续放在属性数据库的，查到了NULL,则后续都没有属性了 */
+			break;
+		}
     }
-    return DH_SUCCESS;
+    if( rspLen > 0 )
+    {
+        return AttReadByTypeRsp(eachAttDataLen, pu1Rsp, rspLen );
+    } 
+    else
+    {
+        return AttErrRsp(ATT_OPCODE_READ_BY_TYPE_REQ, u2StartHandle, ATT_ERR_ATTRIBUTE_NOT_FOUND);
+    }
 }
 
 /**
@@ -582,7 +596,7 @@ static u4 AttReadByTypeReqHandle( u1 *pu1Req, u2 len )
  */
 static u4 AttReadReqHandle(u1 *pu1Req, u2 len)
 {
-    BlkBleAttribute *pblkAtt;
+    BlkBleAttribute *pblkAtt = NULL;
     u1  pu1AttValue[BLE_ATT_MTU_SIZE-1];    // 去掉opcode所占字节
     u2  u2AttValueLen = ATT_INVALID_HANDLE;
     u2  u2AttHandle = ATT_INVALID_HANDLE;
@@ -593,7 +607,7 @@ static u4 AttReadReqHandle(u1 *pu1Req, u2 len)
     }
 
     u2AttHandle = pu1Req[index++];
-    u2AttHandle += (pu1Req[index++]<<8)&0xFF00;
+    u2AttHandle += ((pu1Req[index++]<<8)&0xFF00);
     if( ATT_READ_REQ_LEN != len )
     {
         return AttErrRsp( ATT_OPCODE_READ_REQ, u2AttHandle, ATT_ERR_INVALID_PDU);
@@ -602,7 +616,7 @@ static u4 AttReadReqHandle(u1 *pu1Req, u2 len)
     BleGattFindAttByHandle(u2AttHandle, &pblkAtt);
     if( NULL == pblkAtt )
     {
-        AttErrRsp(ATT_OPCODE_READ_REQ, u2AttHandle, ATT_ERR_INVALID_HANDLE);
+        return AttErrRsp(ATT_OPCODE_READ_REQ, u2AttHandle, ATT_ERR_INVALID_HANDLE);
     }
     /* 只返回ATT_MTU-1 长度的内容，如果有剩余内容，client可以通过Read Blob Request 获取 */
     u2AttValueLen = (pblkAtt->attValue.u2CurrentLen>sizeof(pu1AttValue))?sizeof(pu1AttValue):pblkAtt->attValue.u2CurrentLen;
@@ -638,7 +652,7 @@ static u4 AttWriteCommandHandle(u1 *pu1Req, u2 len)
         return DH_SUCCESS;
     }
     u2AttHandle = pu1Req[index++]&0xff;
-    u2AttHandle += (pu1Req[index++]<<8)&0xff00;
+    u2AttHandle += ((pu1Req[index++]<<8)&0xff00);
 
     BleGattFindAttByHandle(u2AttHandle, &pblkAtt);
     if( NULL != pblkAtt )
@@ -680,7 +694,7 @@ static u4 AttWriteReqHandle(u1* pu1Req, u2 len)
         return DH_SUCCESS;
     }
     u2AttHandle = pu1Req[index++]&0xff;
-    u2AttHandle += (pu1Req[index++]<<8)&0xff00;
+    u2AttHandle += ((pu1Req[index++]<<8)&0xff00);
 
     BleGattFindAttByHandle(u2AttHandle, &pblkAtt);
     if( NULL != pblkAtt )
@@ -728,19 +742,23 @@ u4 BleAttReqHandle( u1 *pu1Data, u2 len )
         break;
 
         case ATT_OPCODE_FIND_INFO_REQ:
+            DEBUG_INFO("ATT_OPCODE_FIND_INFO_REQ");
             u4Ret = AttFindInfoReqHandle(pu1Data+1, len-1);
         break;
         
         case ATT_OPCODE_READ_BY_GROUP_TYPE_REQ:
+            DEBUG_INFO("read by group type");
             u4Ret = AttReadByGroupTypeReqHandle(pu1Data+1, len-1);
         break;
 
         
         case ATT_OPCODE_READ_BY_TYPE_REQ:
+            DEBUG_INFO("ATT_OPCODE_READ_BY_TYPE_REQ");
             u4Ret = AttReadByTypeReqHandle(pu1Data+1, len-1);
         break;
 
         case ATT_OPCODE_READ_REQ:
+            DEBUG_INFO("ATT_OPCODE_READ_REQ");
             u4Ret = AttReadReqHandle(pu1Data+1, len-1);
         break;
         
@@ -757,14 +775,15 @@ u4 BleAttReqHandle( u1 *pu1Data, u2 len )
         break;
 
         default :
-            if( opcode&ATT_COMMAND_FLAG )
+            if( !(opcode&ATT_COMMAND_FLAG) )
             {
+                /* 收到不支持的请求才回not supported */
                 u4Ret = AttErrRsp(opcode, 0x00, ATT_ERR_REQUEST_NOT_SUPPORTED);
             }
         break;
         
     }
-	
+	DEBUG_INFO("att rsp err code:%08x",u4Ret);
 	return u4Ret;
 }
 /**
@@ -778,7 +797,7 @@ u4 BleAttReqHandle( u1 *pu1Data, u2 len )
  */
 u4 BleAttSendNotify(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
 {
-    BlkBleAttribute *pblkAtt;
+    BlkBleAttribute *pblkAtt = NULL;
     u1  pu1Notify[BLE_ATT_MTU_SIZE];
     u2  index = 0;
     u2  u2ValueLen = 0;
@@ -822,7 +841,7 @@ u4 BleAttSendNotify(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
  */
 u4 BleAttSendIndication(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
 {
-    BlkBleAttribute *pblkAtt;
+    BlkBleAttribute *pblkAtt = NULL;
     u1  pu1Indication[BLE_ATT_MTU_SIZE];
     u2  index = 0;
     u2  u2ValueLen = 0;

@@ -7,7 +7,7 @@
 */
 #include "../../include/DhGlobalHead.h"
 
-#define BLE_LINK_CONN_DEBUG
+#define nBLE_LINK_CONN_DEBUG
 
 #if !defined(BLE_LINK_CONN_DEBUG)
 #undef DEBUG_INFO
@@ -22,11 +22,13 @@
 #define SLEEP_INSTANTANEOUS_DEVIATE_TIME		(16)		/* ble协议规定的睡眠下瞬时延迟不能超过16us */
 #define ACTIVE_INSTANTANEOUS_DEVIATE_TIME		(2)			/* ble协议规定的活动下瞬时延迟不能超过2us */
 #define FIXED_1_25_MS							(1250)		/* 1.25ms延迟，第一个主机发送的包的时序用到*/
-#define PACKET_EXTEND_WINDOW				(BLE_PACKET_LENGTH*8)	/* 规范定义连接创建后主机发送的第一个数据包可以超过传输窗口，即窗口结束前收到了
+#define PACKET_EXTEND_WINDOW				    (BLE_PACKET_LENGTH*8)	/* 规范定义连接创建后主机发送的第一个数据包可以超过传输窗口，即窗口结束前收到了
 																			数据包，但是剩下数据会超过窗口。 所以这里直接第一个最大数据包长的情况来做一个监听的延长。
 																			PS：可以通过设置 nrf的ADDRESS中断避免错误情况下这个浪费的延迟监听时间。*/
 
 #define BLE_CONN_SUB_STATE_RX_MASK				(0x02)
+
+#define BLE_LISTEN_EXTEND_WIND                  (500)       /* 经验值，实测可能因为代码执行的耗时影响接收时间点，这里加额外监听时间*/
 /*
 	连接请求中的LLDATA内容:
 	AA			CRCInit		WinSize		WinOffset	Interval	Latency		Timeout		ChM			Hop			SCA
@@ -67,6 +69,9 @@
 #define CHANNEL_MAP_UPDATING        (1) 
 #define CHANNEL_MAP_UPDATED         (0)
 
+#define CONN_PARAMS_UPDATING        (1)
+#define CONN_PARAMS_UPDATED         (0)
+
 #define LINK_RX_OLD_DATA            (1)
 #define LINK_RX_NEW_DATA            (2)
 #define LINK_TX_NEW_DATA            (4)
@@ -103,6 +108,7 @@ typedef struct
 	u1	m_u1UnmappedChannel;
 	u1	m_u1LastUnmappedChannel;
 	u1	m_u1CurrentChannel;			/* 当前连接事件使用的数据通道*/
+	u1  m_u1NextChannel;            /* 下个连接事件使用的通道 */
 /*
 连接事件关闭:
 	MD: more data, 通信双方都没有置位这个标记时，主从都应该关闭当前的连接事件。
@@ -133,21 +139,24 @@ SN,NESN: 响应机制。 收到的NESN是告诉自己对方有没有收到前一
 	
 /* 连接请求中的参数，收到连接请求后，第一个主机发过来的包不管CRC对不对，都决定了连接事件的anchor point */
 	u1	m_u1TransmitWindowSize;					/* 连接建立过程中的监听窗口 1.25ms为单位,1.25 ms to the lesser of 10 ms and (connInterval - 1.25 ms).窗口开始时间为收到连接请求后的transmitWindowOffset + 1.25ms */
+	u1  m_u1NewTWZ;                             /* 连接参数更新过程中的新窗口大小 */
 	u2	m_u2TransmitWindowOffset;				/* 监听窗口偏移 1.25ms为单位,0 ms——connInterval*/
+	u2  m_u2NewTWO;                             /* 连接参数更新过程中的新窗口偏移*/
 	u2	m_u2ConnInterval;						/* 连接间隔 1.25ms为单位         7.5ms-4s*/
-	u2  m_u2ConnIntervalNew;
+	u2  m_u2NewCI;                              /* 连接参数更新使用的新间隔 */
 	u2	m_u2ConnSlaveLatency;					/* 从机延迟--从机可以跳过几个连接时间不监听，降低功耗。0——((connSupervisionTimeout/ connInterval) - 1)，不能大于500
 													如果延迟后没有收到主机包，则后续的每个连接事件都应该监听，知道收到数据包后才能再应用这个参数。*/
-    u2  m_u2ConnSlaveLatencyNew;													
+    u2  m_u2NewCSL;				                /* 连接参数更新使用的新从机延迟 */
 	u2	m_u2ConnSupervisionTimeout;				/* 连接超时--10ms为单位，100 ms —— 32.0 s并且大于(1 + connSlaveLatency) * connInterval。连接建立过程如果超过6个connInterval时间，则认为建立失败 */
-    u2  m_u2ConnSupervisionTimeoutNew;             	
+    u2  m_u2NewCST;             	            /* 连接参数更新使用的新超时 */
 	u2	m_u2ConnSupervisionTimeoutCounter;		/* 没有资源对超时单独创建定时器，超时时间不需要精确，这里用一个计数器，以connInterval为单位来计数*/
 	u2  m_u2connTimeoutBackup;                  /* 连接监控超时备份 */
 	u2  m_u2ConnUpdateInstant;                  /* 连接参数更新的时间点 */
+	u1  m_u1ConnNeedUpdataFlag;                 /* 收到LL_CONN_UPDATE 后需要设置标记等instant到期后更新参数*/
 	u1	m_pu1ChannelMap[BLE_CHANNEL_MAP_LEN];	/* 通道映射图，指示可用通道 ,LSB
 													The LSB represents data channel index 0 and the bit in position 36 represents data channel index 36.*/
 	u1  m_pu1NewChannelMap[BLE_CHANNEL_MAP_LEN];
-	u1  m_u1ChannelMapUpdateInstant;            /* 更新channel map的时间点 */
+	u2  m_u2ChannelMapUpdateInstant;            /* 更新channel map的时间点 */
 	u1  m_u1ChannelMapNeedUpdateFlag;           /* 收到LL_CHANNEL_MAP_REQ 后需要更新channelMap */
 	u1	m_pu1AccessAddress[BLE_ACC_ADDR_LENGTH];/* 接入地址,LSB*/
 	u1	m_pu1CrcInitValue[BLE_CRC_LENGTH];		/* CRC初值，LSB*/
@@ -158,7 +167,11 @@ SN,NESN: 响应机制。 收到的NESN是告诉自己对方有没有收到前一
 	u1	m_u1PeerAddrType;						/* 对端设备地址类型 */
 	u1	m_pu1PeerAddr[BLE_ADDR_LEN];			/* 对端设备地址 ,LSB    */
 
-	u4  m_u4SleepTimer;                         /* 每次等待下次连接事件时的睡眠时间 */
+	u4  m_u4SleepTimer;                         /* 每次等待下次连接事件时的睡眠时间,收到连接请求的时候就计算好，避免以后重复计算影响底层时序 */
+	u4  m_u4AnchorPointDelay;                   /* 每个连接事件的第一个接收到的时间点就是anchor point，因为各种误差原因，
+	                                                做了替换唤醒睡眠监听连接事件的第一个数据包，这里记录一下唤醒后开始监听，
+	                                                到实际收到第一个数据包之间的延迟，作为经验值。在某个连接事件监听超时后需要用到该
+	                                                经验值来设置下次唤醒的时间*/                    
 	                                            
 	EnConnSubState		m_enConnSubState;		/* 连接态子状态 */
 	
@@ -190,6 +203,8 @@ __INLINE static void UpdateChannelMap(void)
         s_blkConnStateInfo.m_u1ChannelMapNeedUpdateFlag = CHANNEL_MAP_UPDATED;
     }
 }
+
+
 /**
  *@brief: 		GetTimerDeviation
  *@details:		获取time时间下由于时钟精度导致的时间误差
@@ -251,6 +266,26 @@ __INLINE static u4 UpdateSeqNum(u1 SN, u1 NESN, u1 crcTrue )
 	}
 
 	return ret;
+}
+
+__INLINE static void UpdateConnParams(void)
+{
+    u4  u4SleepTimer;
+    if( CONN_PARAMS_UPDATING == s_blkConnStateInfo.m_u1ConnNeedUpdataFlag )
+    {
+        s_blkConnStateInfo.m_u1TransmitWindowSize = s_blkConnStateInfo.m_u1NewTWZ;
+        s_blkConnStateInfo.m_u2ConnInterval = s_blkConnStateInfo.m_u2NewCI;
+        s_blkConnStateInfo.m_u2ConnSupervisionTimeout = s_blkConnStateInfo.m_u2NewCST;
+        s_blkConnStateInfo.m_u2ConnSlaveLatency = s_blkConnStateInfo.m_u2NewCSL;
+        s_blkConnStateInfo.m_u2TransmitWindowOffset = s_blkConnStateInfo.m_u2NewTWO;
+
+        u4SleepTimer = s_blkConnStateInfo.m_u2ConnInterval*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME-PACKET_EXTEND_WINDOW-BLE_LISTEN_EXTEND_WIND;
+    	u4SleepTimer -= GetTimerDeviation(u4SleepTimer, s_blkConnStateInfo.m_u1PeerSCA, s_blkConnStateInfo.m_u1SelfSCA);
+    	s_blkConnStateInfo.m_u4SleepTimer = u4SleepTimer;
+        
+        /* 超时也是先计算好，每个连接事件收到数据包了就刷新，timeout单位为10ms，interval单位是1.25ms。 8倍关系 */
+    	s_blkConnStateInfo.m_u2connTimeoutBackup = s_blkConnStateInfo.m_u2ConnSupervisionTimeout*8/s_blkConnStateInfo.m_u2ConnInterval;
+    }
 }
 
 /**
@@ -320,6 +355,7 @@ __INLINE static void LinkResendData(void)
     len = LINK_CONN_STATE_TX_BUFF[1]&0x1F;
 	BleRadioSimpleTx(LINK_CONN_STATE_TX_BUFF, BLE_PDU_HEADER_LENGTH+len);
 }
+
 __INLINE static void LinkSendData(u1 u1PacketFlag, u1 *pu1Data, u2 u2len)
 {
 	u1	sn,nesn,md,llid,len;
@@ -364,23 +400,63 @@ __INLINE static void ExtractRecvPacketSn(u1 *sn, u1 *nesn)
 	*nesn = (pHeader->m_u1Header1 >> DATA_HEAD_NESN_POS) & 0x01;
 }
 
+
+/**
+ *@brief: 		PrepareNextConnEvent
+ *@details:		提前  设置好下个连接事件的相关信息
+                包括通道，白化初值
+                
+ *@retval:		void
+ */
+__INLINE static void PrepareNextConnEvent(void)
+{
+	u1	u1DataChannel;
+	u1  whiteIv;
+	
+    if( CHANNEL_MAP_UPDATING == s_blkConnStateInfo.m_u1ChannelMapNeedUpdateFlag )
+    {
+        /* 更新 channel map的时间点到了 */
+        if( s_blkConnStateInfo.m_u2ConnEventCounter == s_blkConnStateInfo.m_u2ChannelMapUpdateInstant )
+        {
+            UpdateChannelMap();
+        }
+    }	
+    if( CONN_PARAMS_UPDATING == s_blkConnStateInfo.m_u1ConnNeedUpdataFlag )
+    {
+        if( s_blkConnStateInfo.m_u2ConnEventCounter == s_blkConnStateInfo.m_u2ConnUpdateInstant )
+        {
+            UpdateConnParams();
+        }
+    }
+    u1DataChannel  = GetNextDataChannel();
+	whiteIv = GetChannelWhiteIv(u1DataChannel);
+	BleRadioWhiteIvCfg(whiteIv);
+    s_blkConnStateInfo.m_u1NextChannel = u1DataChannel;
+}
+
 __INLINE static void BleLinkDataHandle(void)
 {
 	BlkLinkToHostData	data;
 	BlkBlePduHeader *pHeader;
     u1  pu1NewChannelMap[BLE_CHANNEL_MAP_LEN];	
 	u1	len;
-	u2  u2Instant;
+	u2  u2Instant = 0;
+	u1  u1NewWinSize;
+	u2  u2NewWinOffset;
+	u2  u2NewInterval;
+	u2  u2NewLatency;
+	u2  u2NewTimeout;
 	
 	pHeader = (BlkBlePduHeader *)LINK_CONN_STATE_RX_BUFF;
 	len = pHeader->m_u1Header2 & 0x1F;	
 
-    /* channelMap 更新控制过程需要单独特殊处理，不能延后软中断里面处理 */
+    /* channelMap 更新控制过程需要单独特殊处理，不做延后软中断里面处理 */
 	if( DH_SUCCESS== CheckLinkChannelMapUpdateReq(LINK_CONN_STATE_RX_BUFF, pu1NewChannelMap, &u2Instant) )
 	{
 	    /* 相减最高位为1说明溢出了 */
 	    if( (u2Instant-s_blkConnStateInfo.m_u2ConnEventCounter) >= 32767)
 	    {
+	        DEBUG_INFO("channel map update req err");
             /*
                 做断开处理并通知上层
             */
@@ -389,12 +465,37 @@ __INLINE static void BleLinkDataHandle(void)
 	    {
             memcpy(s_blkConnStateInfo.m_pu1NewChannelMap, pu1NewChannelMap, BLE_CHANNEL_MAP_LEN);
             s_blkConnStateInfo.m_u1ChannelMapNeedUpdateFlag = CHANNEL_MAP_UPDATING;
-            s_blkConnStateInfo.m_u1ChannelMapUpdateInstant = u2Instant;
+            s_blkConnStateInfo.m_u2ChannelMapUpdateInstant = u2Instant;
+            DEBUG_INFO("recv channel map update req!!!!!!!!!!!!!!!!!!!:%04x",s_blkConnStateInfo.m_u2ChannelMapUpdateInstant);
         }
-        return DH_SUCCESS;
+        return ;
 	}
-	/* 非空包才处理*/
-	if( len>0 )
+	else if( DH_SUCCESS == CheckLinkConnUpdateReq(LINK_CONN_STATE_RX_BUFF, &u1NewWinSize, &u2NewWinOffset, &u2NewInterval, &u2NewLatency, &u2NewTimeout, &u2Instant) )
+	{
+	    /* 相减最高位为1说明溢出了 */
+	    if( (u2Instant-s_blkConnStateInfo.m_u2ConnEventCounter) >= 32767)
+	    {
+	        DEBUG_INFO("conn update req err");
+            /*
+                做断开处理并通知上层
+            */
+	    }
+	    else
+	    {
+            s_blkConnStateInfo.m_u2NewCI = u2NewInterval;
+            s_blkConnStateInfo.m_u2NewCSL = u2NewLatency;
+            s_blkConnStateInfo.m_u2NewCST = u2NewTimeout;
+            s_blkConnStateInfo.m_u2NewTWO = u2NewWinOffset;
+            s_blkConnStateInfo.m_u1NewTWZ = u1NewWinSize;
+            s_blkConnStateInfo.m_u2ConnUpdateInstant = u2Instant;
+            s_blkConnStateInfo.m_u1ConnNeedUpdataFlag = CONN_PARAMS_UPDATING;
+            DEBUG_INFO("recv conn update req!!!!!!!!!!!!!!!!!!!:%04x",s_blkConnStateInfo.m_u2ConnUpdateInstant);
+	    }
+	    
+
+	}
+	/* 非空包才处理,提交到下半部处理 */
+	if( len > 0 )
 	{
 		memcpy(data.m_pu1LinkData, LINK_CONN_STATE_RX_BUFF, BLE_PDU_LENGTH);
 		BleLinkDataToHostPush(data);
@@ -412,24 +513,30 @@ static void ConnStateRxPacketHandler(void *pValue)
 {
 	u1	u1DataChannel;
 	u4	u4PassTime;
-	u4	u4PassTimeDeviation;
-	u1  whiteIv;
+	u4	u4PassTimeDeviation = 0;
 	static u4	u4WinSize;
-
-    if( CHANNEL_MAP_UPDATING==s_blkConnStateInfo.m_u1ChannelMapNeedUpdateFlag )
+    static u4   u4WinOffset;
+    static u4   u4SleepBackup;
+    if ( CONN_PARAMS_UPDATING == s_blkConnStateInfo.m_u1ConnNeedUpdataFlag )
     {
-        /* 更新 channel map的时间点到了 */
-        if( s_blkConnStateInfo.m_u2ConnEventCounter == s_blkConnStateInfo.m_u1ChannelMapUpdateInstant )
+        if( s_blkConnStateInfo.m_u2ConnEventCounter == s_blkConnStateInfo.m_u2ConnUpdateInstant )
         {
-            UpdateChannelMap();
+            u4WinOffset = s_blkConnStateInfo.m_u2TransmitWindowOffset*1250;
+            u4SleepBackup = *((u4*)pValue); // 连接更新的时候winoffset用的高频，所以后面计算误差只要用前面低频时钟睡眠的时间就可以了
+            BleHAccuracyTimerStart(RECV_PACKET_HA_TIMER, u4WinOffset, ConnStateRxPacketHandler, &u4SleepBackup);
+            s_blkConnStateInfo.m_u1ConnNeedUpdataFlag = CONN_PARAMS_UPDATED;
+            s_blkConnStateInfo.m_enConnSubState = CONN_CONNING_RX;  //连接参数更新的过程和建立连接时候的过程是一样的。
+
         }
     }
-	/* 设置本次连接事件所在的数据通道 */
-	u1DataChannel  = GetNextDataChannel();
-	whiteIv = GetChannelWhiteIv(u1DataChannel);
-	BleRadioWhiteIvCfg(whiteIv);
-	CfgCurrentDataChannel(u1DataChannel);
-	
+	/* 设置本次连接事件所在的数据通道 *///----获取通道值内部有计算过程影响时序，抽出来再每个事件结束时就计算好下个事件通道,而不是每个事件开始才计算
+//	u1DataChannel  = GetNextDataChannel();
+//	whiteIv = GetChannelWhiteIv(u1DataChannel);
+//	BleRadioWhiteIvCfg(whiteIv);
+    u1DataChannel = s_blkConnStateInfo.m_u1NextChannel;
+    CfgCurrentDataChannel(u1DataChannel);
+    /* 配置底层接收完后，硬件自动切换到发送状态，可以充分利用nrf51硬件发送准备延迟的130us左右的时间来处理紧急的事情 */
+	BleAutoToTxEnable();
 	BleRadioRxData(u1DataChannel, LINK_CONN_STATE_RX_BUFF);
 
 	/* 计算过去的时间由于时钟源造成的可能的误差 */
@@ -444,7 +551,7 @@ static void ConnStateRxPacketHandler(void *pValue)
 		监听包的开始时间是根据时钟精度做了 提前唤醒，但是时钟精度偏的方向是不确定的，所以监听时间也要加长 u4PassTimeDeviation 这个误差。
 		WIN_WIDEN_ADDITIONAL+SLEEP_INSTANTANEOUS_DEVIATE_TIME+u4PassTimeDeviation 做了2倍操作，因为唤醒要提前，等待接收数据窗口要延后，延后是要在补回之前提前的基础上再延后
 		*/
-		u4WinSize = s_blkConnStateInfo.m_u1TransmitWindowSize*1250 + 2*(WIN_WIDEN_ADDITIONAL+SLEEP_INSTANTANEOUS_DEVIATE_TIME+u4PassTimeDeviation+PACKET_EXTEND_WINDOW);
+		u4WinSize = s_blkConnStateInfo.m_u1TransmitWindowSize*1250 + 2*(WIN_WIDEN_ADDITIONAL+SLEEP_INSTANTANEOUS_DEVIATE_TIME+u4PassTimeDeviation+PACKET_EXTEND_WINDOW+BLE_LISTEN_EXTEND_WIND);
 		/* 监听延迟再加上监听时间由于时钟精度造成的误差 */
 
 
@@ -462,15 +569,19 @@ static void ConnStateRxPacketHandler(void *pValue)
 	}
 	else 
 	{
-		LinkConnSubStateSwitch(CONN_CONNECTED_RX);	// 切换到连接态的等待数据子状态
 		/* 
 			不是在监听连接后的第一个数据包，则没有监听窗口，数据到来时间理论应该是连接事件的 Anchor Point
 			不过实际需要考虑睡眠过程中的时钟等误差和数据包的空中传输时间
+			并且再加了一个实际调试中测试的额外监听窗口
 		*/
-		u4WinSize = 2*(WIN_WIDEN_ADDITIONAL + SLEEP_INSTANTANEOUS_DEVIATE_TIME +u4PassTimeDeviation + PACKET_EXTEND_WINDOW);
+		u4WinSize = 2*(WIN_WIDEN_ADDITIONAL + SLEEP_INSTANTANEOUS_DEVIATE_TIME +u4PassTimeDeviation + PACKET_EXTEND_WINDOW+BLE_LISTEN_EXTEND_WIND);
 		BleHAccuracyTimerStart(RECV_PACKET_HA_TIMER, u4WinSize, PacketRecvTimeout, &u4WinSize);
+		LinkConnSubStateSwitch(CONN_CONNECTED_RX);	// 切换到连接态的等待数据子状态
+
 		DEBUG_INFO("%d prepare conned rx:%d",u1DataChannel,u4WinSize);
 	}
+	DEBUG_INFO("current event count:%04x",s_blkConnStateInfo.m_u2ConnEventCounter);
+
 }
 
 /**
@@ -484,6 +595,40 @@ static void PacketRecvTimeout(void *pvalue)
 {
 	u4	u4PassTime;
 	static u4	u4SleepTimer;
+
+    /* 接收超时关闭radio前先关掉自动切换发送的功能，不然关闭后会自动发送一次 */
+    BleAutoToTxDisable();    
+
+    u4PassTime = *((u4*)pvalue);	// 之前监听的超时时间
+    /*
+                        annchor point
+                               |
+        真实的interval            |      真实的interval
+    |<------------------------>|<------------------------>|
+                               |
+    |--------------------------|--------------------------|
+                           
+    |--------------------->|<------>|---------------->|<------>
+        睡眠的时间               监听时间          睡眠时间         监听时间
+
+     监听超时的情况下：
+        提前监听的时间 T_before = T_interval - T_sleep
+        延后监听的时间 T_after =   T_listen - T_before
+
+        所以超时后的睡眠时间为 T_sleep_next = T_sleep - T_after
+
+        综上，超时的情况下，等待下个连接事件前的睡眠时间为
+        T_sleep_next = T_sleep- ( T_listen - ( T_interval - T_sleep ) )
+                     = T_interval - T_listen
+    */
+
+    /* 超时后监听下个连接事件前的睡眠时间不能再用m_u4SleepTimer了，原因如上 */
+	/* 没有接收到数据包，理论上在connInterval 时间后重新监听 */
+	u4SleepTimer = s_blkConnStateInfo.m_u2ConnInterval*1250;
+	/* 需要减去之前监听窗口的时间 */
+	u4SleepTimer -=  u4PassTime;
+	BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStateRxPacketHandler, &u4SleepTimer);
+
 
 	/*超时关闭radio*/
 	BleRadioDisable();
@@ -502,34 +647,25 @@ static void PacketRecvTimeout(void *pvalue)
 
 		BleLinkStateSwitch(BLE_LINK_STANDBY);	// 链路状态回到空闲态
 		LinkConnSubStateSwitch(CONN_IDLE);		// 复位连接子状态
-
+        BleLPowerTimerStop(WAIT_PACKET_SLEEP_TIMER);
+        BleHAccuracyTimerStop(RECV_PACKET_HA_TIMER);
 		if ( CONN_CONNING_RX != s_blkConnStateInfo.m_enConnSubState )
 		{
 			/*
 				上报断开事件,建立连接过程中超时就不上报了吧。
-				
 			*/
 		}
 		return;
 	}
-	u4PassTime = *((u4*)pvalue);	// 之前监听的超时时间
-	/* 没有接收到数据包，理论上在connInterval 时间后重新监听 */
-	u4SleepTimer = s_blkConnStateInfo.m_u2ConnInterval*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME;
-
-	/* 需要减去之前监听窗口的时间 */
-	u4SleepTimer -=  u4PassTime;
-
-	/* 再减去时钟源误差可能导致的误差 */
-	u4SleepTimer -= GetTimerDeviation(u4SleepTimer, s_blkConnStateInfo.m_u1PeerSCA, s_blkConnStateInfo.m_u1SelfSCA);
-	BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStateRxPacketHandler, &u4SleepTimer);
 	
-
 	/* 超时则等于数本次连接事件结束 */
 	UpdateLastUnmappedChannel();				// 更新 LastUnmapChannel
 	s_blkConnStateInfo.m_u2ConnEventCounter++;	// 更新连接计数
-	
 	s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter--;// 没等到数据包，超时计数减1
+    /* 设置好下个连接事件的数据通道 */
+	PrepareNextConnEvent();
 	DEBUG_INFO("Rx timeout,restart:%d",u4SleepTimer);
+
 }
 
 
@@ -546,25 +682,33 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 	{
 		if( s_blkConnStateInfo.m_enConnSubState&BLE_CONN_SUB_STATE_RX_MASK )		//接收状态
 		{
-		    /* 先打开发送，nordic打开发送有一个130us左右的时间 */
+		    BleAutoToTxDisable();
+
+		    /* 先打开发送，nordic打开发送有一个130us左右的时间，这里跟芯片相关了，以后看看能不能想到别的办法处理这个问题 */
 		    /* STEP 1*/
-		    NrfRadioStartTx();          //<----------------------------------------提前让ble进入发送准备状态
+		    //NrfRadioStartTx();          //<----------------------------------------提前让ble进入发送准备状态
             if( !IsBleRadioCrcOk() )
             {
-                DEBUG_INFO("CRC error!!!");
                 /* CRC错误直接回空包，规范要求连续2个包crc错误应该关闭本次连接事件 */
                 crcTrue = 0;
-                return ;
+                //return ;
             }
 
-		
 			BleHAccuracyTimerStop(RECV_PACKET_HA_TIMER);		// 停止接收监听定时器
-			BleLPowerTimerStop(WAIT_PACKET_SLEEP_TIMER);        
+			/*
+				收到本次连接事件的第一个数据包了，确定了anchor point
+				启动下次连接事件的睡眠定时器
+			*/
+			u4SleepTimer = s_blkConnStateInfo.m_u4SleepTimer;
+			BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStateRxPacketHandler, &u4SleepTimer);
+            
 			ExtractRecvPacketSn(&peerSN, &peerNESN);
 			ret = UpdateSeqNum(peerSN, peerNESN, crcTrue);
             /* STEP 2: 从step 1 到实际调用发送调试时发现需要70us左右，影响了ble的时序，
                         所以STEP 1处直接先调用发送，因为nordic本身发送需要一个130ms的发送启动时间
                         这样就可以利用这130us中的70us来先处理一下紧急的事情
+                        如果提前打开，可以230us监控到回包，不提前打开要300-350us左右
+                        PS：测试的手机好像连接请求后收到主机第一个包后的回包需要在250us左右时间回复，不然手机就收不到。
             */
             if( !crcTrue )
             {
@@ -583,36 +727,28 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
     			*/
     			LinkSendData(blkHostData.m_u1PacketFlag, blkHostData.m_pu1HostData, blkHostData.m_u1Length);
 			}
+
             LinkConnSubStateSwitch(CONN_CONNECTED_TX); // 收到数据包则需要回复数据，切换到发送子状态
 			/* 
 				每次收到数据都刷新一下
 			*/
 			s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter = s_blkConnStateInfo.m_u2connTimeoutBackup;
 
-			/*
-				收到本次连接事件的第一个数据包了，确定了anchor point
-				启动下次连接事件的定时器
-			*/
-			u4SleepTimer = s_blkConnStateInfo.m_u4SleepTimer;
-			BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStateRxPacketHandler, &u4SleepTimer);
-			
 			if( crcTrue )
 			{
 			    BleLinkDataHandle();
 			}
 
-			DEBUG_INFO("recved packet,next anchor point:%d",u4SleepTimer);
+			DEBUG_INFO("recved packet:%d,next anchor point:%d",rtcValue,u4SleepTimer);
 
 			/* 先设置好下次要发送的数据 */
 			if( DH_SUCCESS == BleHostDataToLinkPop(&blkHostData) )
 			{
-				DEBUG_INFO("next tx :");DEBUG_DATA(LINK_CONN_STATE_TX_BUFF, BLE_PDU_HEADER_LENGTH+blkHostData.m_u1Length);
 			}
 			else
 			{
 				blkHostData.m_u1Length = 0;
 				blkHostData.m_u1PacketFlag = DATA_PACKET;
-				DEBUG_INFO("next rsp empty");
 			}	
 		}
 		else if ( CONN_CONNECTED_TX == s_blkConnStateInfo.m_enConnSubState )
@@ -620,6 +756,7 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 			/* 当前实现一个连接间隔只能发送一包数据，所以发送完成就是本次连接事件结束 */
 			UpdateLastUnmappedChannel();				// 更新 LastUnmapChannel
 			s_blkConnStateInfo.m_u2ConnEventCounter++;	// 更新连接计数
+			PrepareNextConnEvent();
 			DEBUG_INFO("tx done");
 		}
 		else
@@ -636,7 +773,6 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
                 /* 等待连接后第一个数据包超时了，重置状态等待下个连接事件 */
                 LinkConnSubStateSwitch(CONN_CONNING_RX);
             }
-            DEBUG_INFO("Rx timeout");
 		}
 
 	}
@@ -668,8 +804,9 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 		主机连接后第一个包发送过来的时间点
 		理论时间点是连连接请求数据包后 1.25 ms+transmitWindowOffset
 		实际需要减去RTC硬件机制误差和瞬时误差，让其提前唤醒等待主机的数据。
+		规范允许包的传输超过transmit window，所以要加上一个数据包的空中传输时间，这里按最长包算
 	*/
-	u4AnchorPoint = FIXED_1_25_MS +s_blkConnStateInfo.m_u2TransmitWindowOffset*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME-PACKET_EXTEND_WINDOW;
+	u4AnchorPoint = FIXED_1_25_MS +s_blkConnStateInfo.m_u2TransmitWindowOffset*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME-PACKET_EXTEND_WINDOW-BLE_LISTEN_EXTEND_WIND;
 	/* u4AnchorPoint 还要减去这段时间由于rtc时钟源精度造成的误差，提前唤醒 */
 	u4AnchorPoint = u4AnchorPoint-GetTimerDeviation(u4AnchorPoint, s_blkConnStateInfo.m_u1PeerSCA, s_blkConnStateInfo.m_u1SelfSCA);
 	BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4AnchorPoint, ConnStateRxPacketHandler, &u4AnchorPoint);
@@ -690,6 +827,8 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 	s_blkConnStateInfo.m_u1TransmitSeqNum = 0;
 	s_blkConnStateInfo.m_u1NextExpectedSeqNum = 0;
 
+    s_blkConnStateInfo.m_u1ChannelMapNeedUpdateFlag = CHANNEL_MAP_UPDATED;
+    s_blkConnStateInfo.m_u1ConnNeedUpdataFlag = CONN_PARAMS_UPDATED;
 	BleLinkStateSwitch(BLE_LINK_CONNECTED);	// 链路状态切换到连接态。
 	LinkConnSubStateSwitch(CONN_CONNING_RX);	// 切换连接连接子状态到连接中状态。
 	
@@ -701,14 +840,21 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 	u4AccAddr = pu1LLData[LLDATA_AA_POS] + ((pu1LLData[LLDATA_AA_POS+1]<<8)&0xFF00) + ((pu1LLData[LLDATA_AA_POS+2]<<16)&0xFF0000) + ((pu1LLData[LLDATA_AA_POS+3]<<24)&0xFF000000);
 	BleRadioTxRxAddrCfg(0, u4AccAddr);	// 都是只支持一个连接，所以直接用逻辑0地址
 
-   /* 先计算好免得在每次收到连接事件的第一个数据包时再计算耽误会回响应的速度或者导致计算下次事件的时间不准 */
-    u4SleepTimer = s_blkConnStateInfo.m_u2ConnInterval*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME-PACKET_EXTEND_WINDOW;
+   /* 
+        先计算好免得在每次收到连接事件的第一个数据包时再计算耽误会回响应的速度或者导致计算下次事件的时间不准
+        按规范中给的图解，应该是连接事件的到期时(anchor point)，主机才开始发送第一个数据包，
+        这里为了兼容可能有的手机会提前发，或者极端的 按 anchor point是包发送完成来处理 的情况，所以提前唤醒
+        还加了 最长一包数据包的空中传输时间 PACKET_EXTEND_WINDOW
+   */
+    u4SleepTimer = s_blkConnStateInfo.m_u2ConnInterval*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME-PACKET_EXTEND_WINDOW-BLE_LISTEN_EXTEND_WIND;
 	u4SleepTimer -= GetTimerDeviation(u4SleepTimer, s_blkConnStateInfo.m_u1PeerSCA, s_blkConnStateInfo.m_u1SelfSCA);
 	s_blkConnStateInfo.m_u4SleepTimer = u4SleepTimer;
     
     /* 超时也是先计算好，每个连接事件收到数据包了就刷新，timeout单位为10ms，interval单位是1.25ms。 8倍关系 */
 	s_blkConnStateInfo.m_u2connTimeoutBackup = s_blkConnStateInfo.m_u2ConnSupervisionTimeout*8/s_blkConnStateInfo.m_u2ConnInterval;
+	PrepareNextConnEvent();  // 提前设置好下个连接事件所在的通道
 	DEBUG_INFO("tran offset:%d wind size:%d ,connected:%d",s_blkConnStateInfo.m_u2TransmitWindowOffset,s_blkConnStateInfo.m_u1TransmitWindowSize, u4AnchorPoint);
+
 }
 
 

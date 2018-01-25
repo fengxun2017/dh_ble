@@ -6,7 +6,7 @@
 */
 #include "../../include/DhGlobalHead.h"
 
-#define nBLE_LINK_CONTROL_DEBUG
+#define BLE_LINK_CONTROL_DEBUG
 
 #if !defined(BLE_LINK_CONTROL_DEBUG)
 #undef DEBUG_INFO
@@ -36,7 +36,7 @@
 
 #define FEATURE_SUPPORT_LE_ENCY         (1<<0x00)
 
-#define LL_VERSION_COMPID				(0x0059)
+#define LL_VERSION_COMPID				(0xFFFF)
 #define LL_VERSION_VERSNR				(BLE_VERSION_NUMBER)
 #define LL_VERSION_SUBVERSNR			(0x0022)
 
@@ -117,18 +117,17 @@ void LinkRspUnknown(u1 opcode)
         直接在链路数据接收中断里处理
  *@retval:		DH_SUCCESS
  */
-u4 CheckLinkChannelMapUpdateReq(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *u2Instant)
+u4 CheckLinkChannelMapUpdateReq(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *pu2Instant)
 {
     u1  llid;
     u1  opcode;
     u2  len;
     u1  index = 0;
-
     if( NULL==pu1PDU || NULL==pu1NewChannelMap )
     {
         return ERR_LINK_INVALID_PARAMS;
     }
-    
+
     llid = pu1PDU[index++]&0x03;
     len = pu1PDU[index++]&0x1f;
     if ( LLID_CONTROL==llid && len>0 )
@@ -138,9 +137,9 @@ u4 CheckLinkChannelMapUpdateReq(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *u2Instant)
         {
             memcpy(pu1NewChannelMap, pu1PDU+index, BLE_CHANNEL_MAP_LEN);
             index += BLE_CHANNEL_MAP_LEN;
-            *u2Instant = pu1PDU[index++];
-            *u2Instant += (pu1PDU[index++]<<8)&0xff00;
-
+            *pu2Instant = pu1PDU[index++];
+            *pu2Instant += ((pu1PDU[index]<<8)&0xFF00);
+            DEBUG_INFO("u2 instant:%04x",*pu2Instant);
             return DH_SUCCESS;
         }
     }
@@ -148,14 +147,30 @@ u4 CheckLinkChannelMapUpdateReq(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *u2Instant)
     return ERR_LINK_NOT_CHANNEL_MAP_REQ;    // 不是channel map控制请求
 }
 
-u4 CheckLinkConnUpdateReq(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *u2Instant)
+/**
+ *@brief: 		CheckLinkConnUpdateReq
+ *@details:		链路连接参数更新，虽然规范要求了对方必须需要给的缓冲时间需要多于6个间隔，
+                但是链路数据都是通过下半部处理的，延迟不确定。所以不放在 BleLinkControlHandle 函数中处理
+                直接在链路数据接收中断里处理，直接检查是否是链路更新控制，如果是就直接处理
+ *@param[in]	pu1PDU          链路PDU        
+ *@param[in]	u1WinSize       新窗口大小    
+ *@param[in]	u2WinOffset     新窗口偏移
+ *@param[in]	u2Interval      新连接间隔
+ *@param[in]	u2Latency       新从机延迟
+ *@param[in]	u2Timeout       新超时
+ *@param[in]	u2Instant       连接参数更新的时间点
+
+ *@retval:		DH_SUCCESS
+ */
+
+u4 CheckLinkConnUpdateReq(u1 *pu1PDU, u1 *u1WinSize, u2 *u2WinOffset, u2 *u2Interval, u2 *u2Latency, u2 *u2Timeout, u2 *u2Instant)
 {
     u1  llid;
     u1  opcode;
     u2  len;
     u1  index = 0;
 
-    if( NULL==pu1PDU || NULL==pu1NewChannelMap )
+    if( NULL==pu1PDU || NULL==u1WinSize || NULL==u2WinOffset || NULL==u2Interval || NULL==u2Latency || NULL==u2Timeout || NULL==u2Instant )
     {
         return ERR_LINK_INVALID_PARAMS;
     }
@@ -167,7 +182,12 @@ u4 CheckLinkConnUpdateReq(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *u2Instant)
         opcode = pu1PDU[index++];
         if( LL_CONNECTION_UPDATE_REQ == opcode )
         {
-
+            *u1WinSize = pu1PDU[index++];
+            *u2WinOffset = pu1PDU[index++]; *u2WinOffset += (((u2)pu1PDU[index++]<<8)&0xFF00);
+            *u2Interval = pu1PDU[index++]; *u2Interval += (((u2)pu1PDU[index++]<<8)&0xFF00);
+            *u2Latency = pu1PDU[index++]; *u2Latency += (((u2)pu1PDU[index++]<<8)&0xFF00);
+            *u2Timeout = pu1PDU[index++]; *u2Timeout += (((u2)pu1PDU[index++]<<8)&0xFF00);
+            *u2Instant = pu1PDU[index++]; *u2Instant += (((u2)pu1PDU[index++]<<8)&0xFF00);
             return DH_SUCCESS;
         }
     }

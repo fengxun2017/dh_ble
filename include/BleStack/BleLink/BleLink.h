@@ -31,11 +31,22 @@ typedef struct
 	u1	m_u1Header2;
 }BlkBlePduHeader;	/* PDU header有2字节*/
 
+/*
+        
+
+
+
+******link层以上都当做host，部分link control命令可以延迟处理则也当做host层数据********
+*/
+
+
+/* 链路中断只会处理紧急事件，其他事情通过将数据延后到下半部处理，部分链路控制命令也是当做host层数据推送到下半部*/
 typedef struct 
 {
 	u1	m_pu1LinkData[BLE_PDU_LENGTH];
 }BlkLinkToHostData;
 
+/* host层数据推送到一个数据队列中，链路层进入连接事件后再取出数据，部分链路控制返回也当做host层数据通过这个数据结构放到数据队列中 */
 typedef struct
 {
 	u1 m_u1Length;					// buff中数据长度

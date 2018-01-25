@@ -36,7 +36,9 @@ u4 BleL2capDataSend(u2 u2ChannelId,  u1 *pu1Data, u2 len)
 	hostData.m_pu1HostData[index++] = u2ChannelId&0xff;
 	hostData.m_pu1HostData[index++] = u2ChannelId>>8;
 	memcpy(hostData.m_pu1HostData+index, pu1Data, len);
-
+    hostData.m_u1Length = index+len;
+    hostData.m_u1PacketFlag = DATA_PACKET;
+    
 	if(BleHostDataToLinkPush(hostData) != DH_SUCCESS )
 	{
 		return ERR_L2CAP_INSUFFICIENT_RESOURCE;

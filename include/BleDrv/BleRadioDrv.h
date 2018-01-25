@@ -42,6 +42,9 @@ extern u1 IsBleRadioCrcOk(void);
 extern void BleAutoToRxEnable(void);
 extern void BleAutoToRxDisable(void);
 
+extern void BleAutoToTxEnable(void);
+
+extern void BleAutoToTxDisable(void);
 #ifdef __cplusplus
 #if __cplusplus
 }

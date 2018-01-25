@@ -7,7 +7,6 @@ void TestHandler3(void *pContext);
 
 void TestHandler(void *pContext)
 {
-	uint8_t value = *(uint8_t *)pContext;
 	static  u1 LPTimer0Count = 0;
 	
 	if(LPTimer0Count >=5){ 	DEBUG_INFO("LP0");return;}
@@ -103,8 +102,8 @@ void delayMs(u4 ms)
 //	return 0;
 //}
 
-u1 test_data[]={0,0,1,2,3,4,5,6,0x02,0x01,0x04,0x06,0x09,0x31,0x31,0x32,0x32,0x32};
-u1 test_data2[]={4,0,1,2,3,4,5,6,0x06,0xFF,0x33,0x33,0x33,0x33,0x33};
+u1 test_data[]={0,0,3,2,3,4,5,6,0x02,0x01,0x04,0x06,0x09,0x31,0x31,0x32,0x32,0x32};
+u1 test_data2[]={4,0,3,2,3,4,5,6,0x06,0xFF,0x33,0x33,0x33,0x33,0x33};
 
 int main(void)
 {
@@ -112,7 +111,7 @@ int main(void)
 	BlkBleAddrInfo	addr;
 	
 	addr.m_u1AddrType = 0;
-	addr.m_pu1Addr[0] = 0x01;addr.m_pu1Addr[1] = 0x02;addr.m_pu1Addr[2] = 0x03;
+	addr.m_pu1Addr[0] = 0x03;addr.m_pu1Addr[1] = 0x02;addr.m_pu1Addr[2] = 0x03;
 	addr.m_pu1Addr[3] = 0x04;addr.m_pu1Addr[4] = 0x05;addr.m_pu1Addr[5] = 0x06;
 	channelOn.m_ChannelOn_37 = 1;
 	channelOn.m_ChannelOn_38 = 1;
@@ -127,6 +126,8 @@ int main(void)
 	LinkScanRspCfg(test_data2, sizeof(test_data2));
 	LinkAdvParamsCfg(channelOn, 200);
 	LinkAdvAddrInfoCfg(addr);
+	BleGattInfoInit();
+
 	LinkAdvStart();
 	
 	while(1);

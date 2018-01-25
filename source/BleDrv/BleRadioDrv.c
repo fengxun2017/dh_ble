@@ -142,7 +142,8 @@ void BleRadioTxData( u1 u1channel, u1 *pu1Data, u2 len )
 
 /**
  *@brief: 		BleRadioSimpleTx
- *@details:		ble发送数据，直接在当前通道下发送不做通道切换操作
+ *@details:		ble发送数据，直接在当前通道下发送不做通道切换操作,该函数特定情况下才调用，
+                调用该函数之前rx应该被启动了，利用nrf tx的启动需要130us来做一些紧急的处理。
  *@param[in]	pu1Data  
  *@param[in]	len  
  
@@ -151,7 +152,7 @@ void BleRadioTxData( u1 u1channel, u1 *pu1Data, u2 len )
 void BleRadioSimpleTx(u1 *pu1Data, u2 len)
 {
     NrfRadioPacketPtrCfg( pu1Data );
-//    NrfRadioStartTx();
+    //NrfRadioStartTx();
 }
 
 /**
@@ -174,7 +175,8 @@ void BleRadioRxData( u1 u1Channel, u1 *pu1Data )
 
 /**
  *@brief: 		BleRadioSimpleRx
- *@details:		ble接收数据，直接在当前通道下接收不做通道切换操作
+ *@details:		ble接收数据，直接在当前通道下接收不做通道切换操作,该函数也是特性情况下采用，利用了nrf的一些特性
+                即在调用该函数之前，rx应该已经被启动，利用其启动的130us左右的延迟做一些紧急事情后在设置接收缓存
  *@param[in]	pu1Data  
  
  *@retval:		void
@@ -219,3 +221,12 @@ void BleAutoToRxDisable(void)
     NrfRadioAutoToRxDisable();
 }
 
+void BleAutoToTxEnable(void)
+{
+    NrfRadioAutoToTxEnable();
+}
+
+void BleAutoToTxDisable(void)
+{
+    NrfRadioAutoToTxDisable();
+}

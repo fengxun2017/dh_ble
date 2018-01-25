@@ -22,7 +22,7 @@ char *ADV_SUB_STATE[5] = {"adv_idle","adv_tx","adv_rx","adv_txscanrsp","adv_rxti
 #define ADV_ROUND_OVER						(0xFE)					/* 广播一轮结束，每次广播周期到期后都在37,38,39通道上广播一次*/
 #define ADV_CHANNEL_SWITCH_TO_NEXT			0						/* 切换到下一个广播通道开始广播*/
 #define ADV_CHANNEL_SWITCH_TO_FIRST			1						/* 强制从第一个通道开始广播*/
-#define ADV_RX_WAIT_TIMEOUT					(1500)					/* 每个通道上广播完后等待扫描请求或者连接请求的超时时间*/
+#define ADV_RX_WAIT_TIMEOUT					(800)					/* 每个通道上广播完后等待扫描请求或者连接请求的超时时间*/
 
 /* 广播通道下的帧类型 */
 #define PDU_TYPE_ADV					(0x00)		/* 普通广播 */
@@ -182,13 +182,14 @@ __INLINE static void  SwitchToNextChannel( u1 startFlag )
 
 	if( ADV_ROUND_OVER != channel )
 	{
-		DEBUG_INFO("tx:%d", channel);
 	
 		whiteIv = GetChannelWhiteIv(channel);									    // 配置白化初值
     	BleRadioWhiteIvCfg(whiteIv);
     	s_blkAdvStateInfo.m_u1CurrentChannel = channel;
+    	BleAutoToRxEnable();
     	BleRadioTxData(channel, s_blkAdvStateInfo.m_pu1LinkTxData, BLE_PDU_LENGTH);	// 长度字段实际没有作用	
     	LinkAdvSubStateSwitch(ADV_TX);
+		DEBUG_INFO("tx:%d", channel);
     	return ;
     }
     /* 没有下一个通道则不广播，为广播空闲态*/
@@ -200,7 +201,6 @@ __INLINE static void  SwitchToNextChannel( u1 startFlag )
 __INLINE static void AdvRxWaitTimeoutHandler(void *pvalue)
 {
 	// 等待接收超时则关闭接收并切换到下一个通道广播
-	//BleAutoToRxDisable();
 	BleRadioDisable();
 	LinkAdvSubStateSwitch(ADV_RX_TIMEOUT);
 
@@ -227,12 +227,12 @@ __INLINE static void AdvTxScanRsp(void)
 	channel = s_blkAdvStateInfo.m_u1CurrentChannel;				// 获取当前接收到扫描请求的通道
 	if( ADV_ROUND_OVER != channel )
 	{
-		DEBUG_INFO("tx scan rsp on channel:%d", channel);
 	
-		whiteIv = GetChannelWhiteIv(channel);									// 配置白化初值
-    	BleRadioWhiteIvCfg(whiteIv);
+		//whiteIv = GetChannelWhiteIv(channel);									// 配置白化初值
+    	//BleRadioWhiteIvCfg(whiteIv);
     	BleRadioTxData(channel, s_blkAdvStateInfo.m_pu1LinkScanRspData, BLE_PDU_LENGTH);	// 长度字段实际没有作用	
     	LinkAdvSubStateSwitch(ADV_TX_SCANRSP);
+		DEBUG_INFO("tx scan rsp on channel:%d", channel);
 		return ;
     }
 
@@ -254,16 +254,17 @@ __INLINE static void HandleAdvTxDone(void)
 	if ( ADV_TX == advState )
 	{
 		// 发送完成后在当前通道上开始接收
-		DEBUG_INFO("rx:%d",s_blkAdvStateInfo.m_u1CurrentChannel);
 		BleRadioSimpleRx(s_blkAdvStateInfo.m_pu1LinkRxData);
 		LinkAdvSubStateSwitch(ADV_RX);
 		BleHAccuracyTimerStart(BLE_ADV_RX_TIMER, ADV_RX_WAIT_TIMEOUT, AdvRxWaitTimeoutHandler, NULL);		// 启动接收超时定时器
+		DEBUG_INFO("rx:%d",s_blkAdvStateInfo.m_u1CurrentChannel);
+
 	}
 	else if ( ADV_TX_SCANRSP == advState )
 	{
-		DEBUG_INFO("tx scanrsp done");
 		// 如果发送的是扫描响应，则直接切换到下一个广播通道上开始广播
 		SwitchToNextChannel(ADV_CHANNEL_SWITCH_TO_NEXT);
+		DEBUG_INFO("tx scanrsp done");
     }
 }
 
@@ -281,7 +282,6 @@ __INLINE static void HandleAdvRxDone(void)
 	{
 		return ;
 	}
-	
 	/* 
 		扫描请求处理:			header(2 octets) ScanA(2 octets) AdvA(6 octets)
 		连接请求：			header(2 octets) InitA(6 octets) AdvA(6 octets) LLData(22 octets)
@@ -290,21 +290,19 @@ __INLINE static void HandleAdvRxDone(void)
 	*/	
 	if( selfType==RxAddType && memcmp(pu1Rx+8, s_blkAdvStateInfo.m_blkAddrInfo.m_pu1Addr, BLE_ADDR_LEN)==0 )
 	{
-	    //BleAutoToRxDisable();
+		BleHAccuracyTimerStop(BLE_ADV_RX_TIMER);	// 停止广播等待接收超时
 		if( PDU_TYPE_SCAN_REQ == pduType )
 		{
 		    
-			BleHAccuracyTimerStop(BLE_ADV_RX_TIMER);	// 停止广播等待接收超时
 			AdvTxScanRsp();
 			DEBUG_INFO("scan req!!!");
 		}
 		else if( PDU_TYPE_CONNECT_REQ == pduType )
 		{
 		
-			BleHAccuracyTimerStop(BLE_ADV_RX_TIMER);	// 停止广播等待接收超时
 			BleLPowerTimerStop(BLE_LP_TIMER0);	
-			DEBUG_INFO("connect req!!!");
 			LinkConnReqHandle(TxAddType, pu1Rx+2, pu1Rx+14);
+			DEBUG_INFO("connect req!!!");
 		}
 	}
 }
@@ -315,6 +313,11 @@ static void LinkAdvRadioEvtHandler(EnBleRadioEvt evt)
 	{
 		if( ADV_TX == s_blkAdvStateInfo.m_enAdvSubState ||  ADV_TX_SCANRSP == s_blkAdvStateInfo.m_enAdvSubState)
 		{
+		    /*
+		        收到接收中断说明发送完成了，前面设置了radio disable后自动切换到接收，所以这里radio，已经开始接收了
+                所以这里要关掉AutoToRx 的机制，不然接收完 radio进入disable后又会再进入rx
+		    */
+		    BleAutoToRxDisable();
 			//发送完成
 			HandleAdvTxDone();
 		}
@@ -325,7 +328,6 @@ static void LinkAdvRadioEvtHandler(EnBleRadioEvt evt)
 		}
 		else if( ADV_RX_TIMEOUT == s_blkAdvStateInfo.m_enAdvSubState )
 		{
-		    //BleAutoToRxEnable();
             SwitchToNextChannel(ADV_CHANNEL_SWITCH_TO_NEXT);
 		}
 	}
@@ -455,7 +457,12 @@ u4 LinkAdvStart(void)
     BleRadioWhiteIvCfg(whiteIv);
     s_blkAdvStateInfo.m_u1CurrentChannel = channel;
     BleLinkStateSwitch(BLE_LINK_ADVERTISING);					// 链路状态切换到广播态
-    //BleAutoToRxEnable();
+
+    /* 
+        发送结束后硬件自动切换成接收，不然等发送结束的时候执行处理代码后才开启接收，nrf51接收开启本身需要130us左右延迟
+        这样可能会延误接收扫描响应或者连接请求，让硬件自动打开接收，利用其130us的延迟执行代码可以充分利用时间
+    */
+    BleAutoToRxEnable();
     BleRadioTxData(channel, s_blkAdvStateInfo.m_pu1LinkTxData, BLE_PDU_LENGTH);	// 长度字段实际没有作用
 
     /* 启动广播间隔定时器，规范要求间隔应该加上一个 0-10ms的随机延迟，不过这里不实现了 */
