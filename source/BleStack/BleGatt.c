@@ -7,14 +7,14 @@
 #include "../../include/DhGlobalHead.h"
 
 #define	BLE_GATT_ATT_MAX_COUNT      20
-BlkBleAttribute	ATT_RESOURCE_POOL[BLE_GATT_ATT_MAX_COUNT];  /* 属性资源池，目前最大只允许有20个att */
-u1	UUID_RESOURCE_POOL[BLE_GATT_ATT_MAX_COUNT * 2 * UUID_TYPE_128BIT];  /*UUID内存资源池，从这里获取存放uuid的内存 */
 
+/*UUID内存资源池，从这里获取存放uuid的内存 */
+
+CREATE_MEMORY_INSTANCE(UUID_RESOURCE_POOL, (BLE_GATT_ATT_MAX_COUNT*2*UUID_TYPE_128BIT));
 
 typedef struct
 {
-    u1 *pu1UUIDPool;                        /* uuid 内存池 */
-    u1	u1AttMaxCount;                      /* 最大允许存在的属性 */
+    u2	u1AttMaxCount;                      /* 最大允许存在的属性 */
     u2	u2AttCount;                         /* 当前属性个数 */
     BlkBleAttribute	*blkBleServiceSets;     /* 当前属性数据库*/
 } BlkBleGattInfo;
@@ -40,7 +40,7 @@ u1	pu1RxValue[20];
 u1	pu1DeviceName[] = {'D', 'H', '_', 'B', 'L', 'E'};
 
 /* ble服务集合 */
-BlkBleAttribute		BleServiceSets[] =
+BlkBleAttribute		BleServiceSets[BLE_GATT_ATT_MAX_COUNT] =
 {
     {
         {UUID_TYPE_16BIT, pu1PrimaryServiceUuid},
@@ -100,8 +100,7 @@ BlkBleAttribute		BleServiceSets[] =
 u4	BleGattInfoInit( void )
 {
     memset( &s_blkBleGattInfo, 0x00, sizeof( BlkBleGattInfo ) );
-    s_blkBleGattInfo.pu1UUIDPool = UUID_RESOURCE_POOL;
-    s_blkBleGattInfo.u2AttCount = 9;
+    s_blkBleGattInfo.u2AttCount = 0;
     s_blkBleGattInfo.u1AttMaxCount = BLE_GATT_ATT_MAX_COUNT;
     s_blkBleGattInfo.blkBleServiceSets = BleServiceSets;
 
@@ -176,3 +175,50 @@ u4	BleGattFindAttByHandle( u2 u2Handle, BlkBleAttribute **ppblkAtt )
     }
     return ERR_GATT_NOT_FIND_ATT;
 }
+
+
+u4 BleGattAddServiceDecl(u1 *pu1ServiceUuid, u1 uuidType)
+{
+    u2 currCount;
+    BlkBleAttribute  *currAtt;
+    u1 *pu1Uuid;
+    currCount = s_blkBleGattInfo.u2AttCount;
+    if( currCount >= s_blkBleGattInfo.u1AttMaxCount )
+    {
+        return ERR_GATT_RESOURCE_INSUFFICCIENT;
+    }
+    if( UUID_TYPE_128BIT!=uuidType && UUID_TYPE_16BIT!=uuidType )
+    {
+        return ERR_GATT_PARAMS_INVALID;
+    }
+    currAtt = s_blkBleGattInfo.blkBleServiceSets[currCount];
+    currAtt->attType.uuidType = UUID_TYPE_16BIT;
+    pu1Uuid = DhMemoryAlloc(UUID_RESOURCE_POOL, UUID_TYPE_16BIT);
+    if( NULL == pu1Uuid )
+    {
+        ERR_GATT_RESOURCE_INSUFFICCIENT;
+    }
+    pu1Uuid[0] = BLE_PRIMARY_SERVICE_UUID&0xff;
+    pu1Uuid[1] = (BLE_PRIMARY_SERVICE_UUID>>8)&0xff;
+    currAtt->attType.pu1Uuid = pu1Uuid;
+
+    pu1Uuid = DhMemoryAlloc(UUID_RESOURCE_POOL, uuidType);
+    if( NULL == pu1Uuid )
+    {
+        ERR_GATT_RESOURCE_INSUFFICCIENT;
+    }
+    memcpy(pu1Uuid, pu1ServiceUuid, uuidType);
+    currAtt->attValue.u2MaxSize = uuidType;
+    currAtt->attValue.u2CurrentLen = uuidType;
+    currAtt->attValue.pu1AttValue = pu1Uuid;
+
+    currAtt->attPermission = ATT_PERMISSION_READ;
+
+    return DH_SUCCESS;
+}
+
+u4 BleGattAddCharacteristic(BlkCharacteristicCfg charaCfg, u2 *u2ValueHandle )
+{
+    
+}
+

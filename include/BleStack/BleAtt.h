@@ -33,8 +33,8 @@ typedef struct
 
 #define ATT_PERMISSION_READ						0x01	/* 允许读 */
 #define ATT_PERMISSION_WRITE					0x02	/* 允许写 */
-#define ATT_PERMISIION_READ_AUTHENTICATION		0x04	/* 读需要链路认证过 */
-#define ATT_PERMISIION_WRITE_AUTHENTICATION		0x08	/* 写需要链路认证过 */
+#define ATT_PERMISSION_READ_AUTHENTICATION		0x04	/* 读需要链路认证过 */
+#define ATT_PERMISSION_WRITE_AUTHENTICATION		0x08	/* 写需要链路认证过 */
 #define ATT_PERMISSION_READ_AUTHORIZATION		0x10	/* 读需要需要授权 */
 #define ATT_PERMISSION_WRITE_AUTHORIZATION		0x20	/* 写需要需要授权 */
 #define ATT_PERMISSION_READ_ENCRYPTION			0x40	/* 读需要链路加密 */

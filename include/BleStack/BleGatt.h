@@ -20,6 +20,15 @@
 #define BLE_RECONNECTION_ADDRESS_UUID			0x2A03
 #define BLE_SERVICE_CHANGED_UUID				0x2A05
 
+typedef struct
+{
+    BlkAttributeType    uuid;
+    u2  m_u2CharacteristicProperties;       // 是否支持读写等特性
+    u2  m_u2ValuePermission;                // 特性值的许可条件
+    u2  m_u2CCCDPermission;                 // 客户端特性配置描述符的许可条件
+    u1  m_u1CCCD:1;                         // 是否存在客户端特性配置描述符
+}BlkCharacteristicCfg;
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C"{

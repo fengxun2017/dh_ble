@@ -19,6 +19,7 @@
 #include "DhConfig.h"
 #include "DhBleAux.h"
 #include "./Common/DhQueue.h"
+#include "./Common/DhBuffManage.h"
 #include "./debug/DhDebug.h"
 #include "./DhError.h"
 
