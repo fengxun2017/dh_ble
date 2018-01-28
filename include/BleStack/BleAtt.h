@@ -9,22 +9,22 @@
 #include "../DhGlobalHead.h"
 typedef struct
 {
-	u1	uuidType;
-	u1	*pu1Uuid;		/* 指向实际存放uuid的buff，UUID 按LSB格式存放 */
+	u1	m_u1UuidType;       /* 当前只支持16/128bit长度的UUID */
+	u1	*m_pu1Uuid;		/* 指向实际存放uuid的buff，UUID 按LSB格式存放 */
 }BlkAttributeType;
 
 typedef struct
 {
-	u2	u2MaxSize;				/* 属性的大小*/
-	u2	u2CurrentLen;			/* 属性值的当前长度*/
-	u1	*pu1AttValue;			/* 具体属性值*/
+	u2	m_u2MaxSize;				/* 属性的大小*/
+	u2	m_u2CurrentLen;			/* 属性值的当前长度*/
+	u1	*m_pu1AttValue;			/* 具体属性值*/
 }BlkAttributeValue;
 
 typedef struct 
 {
-	BlkAttributeType	attType;
-	BlkAttributeValue	attValue;
-	u2					attPermission;		/* 许可条件，上层自定义实现*/
+	BlkAttributeType	m_blkAttType;
+	BlkAttributeValue	m_blkAttValue;
+	u2					m_u2AttPermission;		/* 许可条件，上层自定义实现*/
 }BlkBleAttribute;
 
 

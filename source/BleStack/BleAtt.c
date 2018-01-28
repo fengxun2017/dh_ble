@@ -346,20 +346,20 @@ static u4 AttFindInfoReqHandle( u1  *pu1Req, u2 len )
             /* 第一个att,后续的att uuid必须跟第一个长度一样才能放到响应里 */
             if( u2AttHandle == u2StartHandle )
             {
-                uuidFormat = GetUuidFormat( pblkAtt->attType.uuidType );
+                uuidFormat = GetUuidFormat( pblkAtt->m_blkAttType.m_u1UuidType );
             }
           
             /* find information 的响应中只能放同一类型的uuid */
-            if( GetUuidFormat( pblkAtt->attType.uuidType ) != uuidFormat || ( ( rspLen + pblkAtt->attType.uuidType + ATT_HANDLE_LEN ) > sizeof( pu1Rsp ) ) )
+            if( GetUuidFormat( pblkAtt->m_blkAttType.m_u1UuidType) != uuidFormat || ( ( rspLen + pblkAtt->m_blkAttType.m_u1UuidType + ATT_HANDLE_LEN ) > sizeof( pu1Rsp ) ) )
             {
                 return AttFindInfoRsp( uuidFormat, pu1Rsp, rspLen );
             }
             
             pu1Rsp[rspLen++] = u2AttHandle & 0xff;
             pu1Rsp[rspLen++] = ( u2AttHandle >> 8 ) & 0xff;
-            memcpy( pu1Rsp + rspLen, pblkAtt->attType.pu1Uuid, pblkAtt->attType.uuidType );
+            memcpy( pu1Rsp + rspLen, pblkAtt->m_blkAttType.m_u1UuidType, pblkAtt->m_blkAttType.m_u1UuidType );
             /* uuid的类型实际值就是UUID的长度 */
-            rspLen += pblkAtt->attType.uuidType;
+            rspLen += pblkAtt->m_blkAttType.m_u1UuidType;
         }
 		else
 		{
@@ -438,7 +438,7 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
         BleGattFindAttByHandle( u2AttHandle, &pblkAtt );
         if( NULL != pblkAtt )
         {
-            if( pblkAtt->attType.uuidType == uuidType && memcmp(pblkAtt->attType.pu1Uuid, pu1GroupType, uuidType) == 0 )
+            if( pblkAtt->m_blkAttType.m_u1UuidType == uuidType && memcmp(pblkAtt->m_blkAttType.m_pu1Uuid, pu1GroupType, uuidType) == 0 )
             {
                 if( ATT_INVALID_HANDLE != u2GroupStartHandle )  // 说明找到的不是第一个服务声明
                 {
@@ -451,7 +451,7 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
                     memcpy( pu1Rsp + rspLen, pu1AttValue, u1AttValueLen );
                     rspLen += u1AttValueLen;
                     /* Attribute Data List 响应格式为AttHandle(2B) EndGroupHandle(2B) AttValue */
-                    if( ( rspLen + pblkAtt->attValue.u2CurrentLen + 4 )>sizeof( pu1Rsp ) || (pblkAtt->attValue.u2CurrentLen+4)!=eachAttDataLen )
+                    if( ( rspLen + pblkAtt->m_blkAttValue.m_u2CurrentLen + 4 )>sizeof( pu1Rsp ) || (pblkAtt->m_blkAttValue.m_u2CurrentLen+4)!=eachAttDataLen )
                     {
                         /* 数据已经放不下了，或者格式和前面已经保存的不一样，返回当前已经找到的 */
                         return AttReadByGroupTypeRsp(eachAttDataLen, pu1Rsp, rspLen );
@@ -459,16 +459,16 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
                 }
                 u2GroupStartHandle = u2AttHandle;
                 /* read group 支持查找的是服务声明，其值为UUID 最大16字节而已 */
-                if( pblkAtt->attValue.u2CurrentLen < sizeof( pu1AttValue ) )
+                if( pblkAtt->m_blkAttValue.m_u2CurrentLen < sizeof( pu1AttValue ) )
                 {
-                    memcpy( pu1AttValue, pblkAtt->attValue.pu1AttValue, pblkAtt->attValue.u2CurrentLen );
-                    u1AttValueLen = pblkAtt->attValue.u2CurrentLen;
+                    memcpy( pu1AttValue, pblkAtt->m_blkAttValue.m_pu1AttValue, pblkAtt->m_blkAttValue.m_u2CurrentLen );
+                    u1AttValueLen = pblkAtt->m_blkAttValue.m_u2CurrentLen;
                 }
                 else
                 {
                     u1AttValueLen = 0;
                 }
-                eachAttDataLen = 4+pblkAtt->attValue.u2CurrentLen;
+                eachAttDataLen = 4+pblkAtt->m_blkAttValue.m_u2CurrentLen;
             }
         }
 		else
@@ -550,24 +550,24 @@ static u4 AttReadByTypeReqHandle( u1 *pu1Req, u2 len )
         BleGattFindAttByHandle( u2AttHandle, &pblkAtt );
         if( NULL != pblkAtt )
         {
-            if( pblkAtt->attType.uuidType == uuidType && memcmp(pblkAtt->attType.pu1Uuid, pu1FindType, uuidType) == 0 )
+            if( pblkAtt->m_blkAttType.m_u1UuidType == uuidType && memcmp(pblkAtt->m_blkAttType.m_pu1Uuid, pu1FindType, uuidType) == 0 )
             {
                     /* 这是第一个找到的att，后续找到的att的 value长度需要和第一个保持一致 */
                 if( 0 == eachAttDataLen )
                 {
                     /* AttHandle(2B) + AttValue */
-                    eachAttDataLen = 2+pblkAtt->attValue.u2CurrentLen;  
+                    eachAttDataLen = 2+pblkAtt->m_blkAttValue.m_u2CurrentLen;  
                 }
                     /* Attribute Data List 响应格式为AttHandle(2B)      AttValue */
-                if( ( rspLen + pblkAtt->attValue.u2CurrentLen + 2 ) > sizeof( pu1Rsp ) || (pblkAtt->attValue.u2CurrentLen+2)!=eachAttDataLen )
+                if( ( rspLen + pblkAtt->m_blkAttValue.m_u2CurrentLen + 2 ) > sizeof( pu1Rsp ) || (pblkAtt->m_blkAttValue.m_u2CurrentLen+2)!=eachAttDataLen )
                 {
                     /* 数据已经放不下了，或者格式和前面已经保存的不一样，返回当前已经找到的 */
                     return AttReadByTypeRsp(eachAttDataLen, pu1Rsp, rspLen );
                 }
                 pu1Rsp[rspLen++] = u2AttHandle&0xff;
                 pu1Rsp[rspLen++] = (u2AttHandle>>8)&0xff;
-                memcpy(pu1Rsp+rspLen, pblkAtt->attValue.pu1AttValue, pblkAtt->attValue.u2CurrentLen);
-                rspLen += pblkAtt->attValue.u2CurrentLen;
+                memcpy(pu1Rsp+rspLen, pblkAtt->m_blkAttValue.m_pu1AttValue, pblkAtt->m_blkAttValue.m_u2CurrentLen);
+                rspLen += pblkAtt->m_blkAttValue.m_u2CurrentLen;
             }
         }
 		else
@@ -619,8 +619,8 @@ static u4 AttReadReqHandle(u1 *pu1Req, u2 len)
         return AttErrRsp(ATT_OPCODE_READ_REQ, u2AttHandle, ATT_ERR_INVALID_HANDLE);
     }
     /* 只返回ATT_MTU-1 长度的内容，如果有剩余内容，client可以通过Read Blob Request 获取 */
-    u2AttValueLen = (pblkAtt->attValue.u2CurrentLen>sizeof(pu1AttValue))?sizeof(pu1AttValue):pblkAtt->attValue.u2CurrentLen;
-    memcpy(pu1AttValue, pblkAtt->attValue.pu1AttValue, u2AttValueLen);
+    u2AttValueLen = (pblkAtt->m_blkAttValue.m_u2CurrentLen>sizeof(pu1AttValue))?sizeof(pu1AttValue):pblkAtt->m_blkAttValue.m_u2CurrentLen;
+    memcpy(pu1AttValue, pblkAtt->m_blkAttValue.m_pu1AttValue, u2AttValueLen);
 
     return AttReadRsp(pu1AttValue, u2AttValueLen);
 }
@@ -658,10 +658,10 @@ static u4 AttWriteCommandHandle(u1 *pu1Req, u2 len)
     if( NULL != pblkAtt )
     {
         /* valueLen > attMaxlen，则写请求直接忽略*/
-        if( u2ValueLen <= pblkAtt->attValue.u2MaxSize )
+        if( u2ValueLen <= pblkAtt->m_blkAttValue.m_u2MaxSize )
         {
-            memcpy(pblkAtt->attValue.pu1AttValue, pu1Req+index, u2ValueLen);
-            pblkAtt->attValue.u2CurrentLen = u2ValueLen;
+            memcpy(pblkAtt->m_blkAttValue.m_pu1AttValue, pu1Req+index, u2ValueLen);
+            pblkAtt->m_blkAttValue.m_u2CurrentLen = u2ValueLen;
         }                                                                               
     }
     return DH_SUCCESS;
@@ -699,10 +699,10 @@ static u4 AttWriteReqHandle(u1* pu1Req, u2 len)
     BleGattFindAttByHandle(u2AttHandle, &pblkAtt);
     if( NULL != pblkAtt )
     {
-        if( u2ValueLen <= pblkAtt->attValue.u2MaxSize )
+        if( u2ValueLen <= pblkAtt->m_blkAttValue.m_u2MaxSize )
         {
-            memcpy(pblkAtt->attValue.pu1AttValue, pu1Req+index, u2ValueLen);
-            pblkAtt->attValue.u2CurrentLen = u2ValueLen;
+            memcpy(pblkAtt->m_blkAttValue.m_pu1AttValue, pu1Req+index, u2ValueLen);
+            pblkAtt->m_blkAttValue.m_u2CurrentLen = u2ValueLen;
         }
         else
         {
@@ -817,7 +817,7 @@ u4 BleAttSendNotify(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
     memcpy(pu1Notify+index, pu1AttValue, u2ValueLen);
     index += u2ValueLen;
     /* 同时也要更新属性值 */
-    memcpy(pblkAtt->attValue.pu1AttValue, pu1AttValue, u2ValueLen);
+    memcpy(pblkAtt->m_blkAttValue.m_pu1AttValue, pu1AttValue, u2ValueLen);
     
     if( BleL2capDataSend( BLE_L2CAP_ATT_CHANNEL_ID, pu1Notify, index ) != DH_SUCCESS )
     {
@@ -861,7 +861,7 @@ u4 BleAttSendIndication(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
     memcpy(pu1Indication+index, pu1AttValue, u2ValueLen);
     index += u2ValueLen;
     /* 同时也要更新属性值 */
-    memcpy(pblkAtt->attValue.pu1AttValue, pu1AttValue, u2ValueLen);
+    memcpy(pblkAtt->m_blkAttValue.m_pu1AttValue, pu1AttValue, u2ValueLen);
     
     if( BleL2capDataSend( BLE_L2CAP_ATT_CHANNEL_ID, pu1Indication, index ) != DH_SUCCESS )
     {

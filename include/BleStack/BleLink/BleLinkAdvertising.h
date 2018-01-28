@@ -23,11 +23,15 @@ extern "C"{
 #endif /* __cplusplus */
 
 extern void LinkAdvAddrInfoCfg(BlkBleAddrInfo addr);
-extern u4 LinkAdvDataCfg(u1 *pu1Data, u2	len);
+extern BlkBleAddrInfo LinkAdvAddrInfoGet(void);
+
+extern u4 LinkAdvDataCfg(u1 *pu1Data, u2 u2Offset, u2	len);
 extern void LinkAdvParamsCfg(BlkAdvChannelOn channels, u2 intervalMs);
 extern u4 LinkAdvStart(void);
 extern void LinkAdvStateInit(void);
-extern u4	LinkScanRspCfg(u1 *pu1Data, u2	len);
+extern u4	LinkScanRspCfg(u1 *pu1Data, u2 u2Offset, u2	len);
+extern u2 LinkScanRspLenGet(void);
+extern u2 LinkAdvDataLenGet(void);
 
 #ifdef __cplusplus
 #if __cplusplus

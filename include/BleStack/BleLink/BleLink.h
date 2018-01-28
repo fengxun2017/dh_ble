@@ -33,9 +33,6 @@ typedef struct
 
 /*
         
-
-
-
 ******link层以上都当做host，部分link control命令可以延迟处理则也当做host层数据********
 */
 
@@ -54,11 +51,7 @@ typedef struct
 	u1 m_pu1HostData[BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH];
 }BlkHostToLinkData;
 
-typedef struct
-{
-	u1		m_u1AddrType;				/* 0-public  1-random */
-	u1		m_pu1Addr[BLE_ADDR_LEN];	/* 设备地址,LSB    */
-}BlkBleAddrInfo;
+
 
 typedef enum
 {

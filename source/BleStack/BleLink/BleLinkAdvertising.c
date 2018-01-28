@@ -58,18 +58,20 @@ typedef enum
 
 typedef struct 
 {
-	EnAdvSubState		m_enAdvSubState;				/* 广播状态子状态 */
-	BlkAdvChannelOn		m_blkChannels;				/* 使能的广播通道 */
-	BlkBleAddrInfo		m_blkAddrInfo;				/* 地址信息 */
+	EnAdvSubState		m_enAdvSubState;				            /* 广播状态子状态 */
+	BlkAdvChannelOn		m_blkChannels;				                /* 使能的广播通道 */
+	BlkBleAddrInfo		m_blkAddrInfo;				                /* 地址信息 */
 	
-	u2 					m_u2AdvInterval;			/* 广播间隔,ms为单位        20ms-10.24s */
-	u1					m_u1CurrentChannel;			/* 当前广播通道 */
-	u1					m_u1AdvType;				/* 广播类型 */
+	u2 					m_u2AdvInterval;			                /* 广播间隔,ms为单位        20ms-10.24s */
+	u1					m_u1CurrentChannel;			                /* 当前广播通道 */
+	u1					m_u1AdvType;				                /* 广播类型 */
 
-	u1					m_pu1LinkTxData[BLE_PDU_LENGTH];				/* 存放待发送数据 */
+	u1					m_pu1LinkTxData[BLE_PDU_LENGTH];			/* 存放待发送数据 */
+	u2                  m_u2AdvLen;                                 /* 除去2字节头的长度 */
 	u1					m_pu1LinkTxDataBP[BLE_PDU_LENGTH];			/* 存放待发送数据备份，为了支持动态调整广播，如果正在广播的时候设置广播数据，
 																			则数据存放在该buff中，广播结束后再重新设置广播数据。*/
 	u1					m_pu1LinkScanRspData[BLE_PDU_LENGTH];		/* 扫描响应数据 */
+    u2                  m_u2ScanRspLen;                             /* 除去2字节头的长度 */
 	u1					m_pu1LinkRxData[BLE_PDU_LENGTH];			/* 存放接收数据buff*/
 }BlkAdvStateInfo;
 
@@ -377,34 +379,47 @@ void LinkAdvAddrInfoCfg(BlkBleAddrInfo addr)
 	s_blkAdvStateInfo.m_blkAddrInfo = addr;
 }
 
+BlkBleAddrInfo LinkAdvAddrInfoGet(void)
+{
+    return s_blkAdvStateInfo.m_blkAddrInfo;
+}
+
 /**
  *@brief: 		LinkAdvDataCfg
  *@details:		配置广播数据
  *@param[in]	pu1Data		广播数据
+ *@param[in]	u2Offset	设置数据偏移
  *@param[in]	len			数据长度
  
  *@retval:		u4
  */
-u4 LinkAdvDataCfg(u1 *pu1Data, u2	len)
+u4 LinkAdvDataCfg(u1 *pu1Data, u2 u2Offset, u2	len)
 {
-	if( len > BLE_PDU_LENGTH )
+	if( (len+u2Offset) > BLE_PDU_LENGTH )
 	{
 		return ERR_LINK_INVALID_LEN;
 	}
 	
-	memcpy(s_blkAdvStateInfo.m_pu1LinkTxData, pu1Data, len);
+	memcpy(s_blkAdvStateInfo.m_pu1LinkTxData+u2Offset, pu1Data, len);
+	s_blkAdvStateInfo.m_u2AdvLen = len;
 	return 	DH_SUCCESS;
+}
+
+u2 LinkAdvDataLenGet(void)
+{
+    return s_blkAdvStateInfo.m_u2AdvLen;
 }
 
 /**
  *@brief: 		LinkScanRspCfg
  *@details:		配置扫描响应数据
  *@param[in]	pu1Data		广播数据
+ *@param[in]	u2Offset	设置数据偏移
  *@param[in]	len			数据长度
 
  *@retval:		void
  */
-u4	LinkScanRspCfg(u1 *pu1Data, u2	len)
+u4	LinkScanRspCfg(u1 *pu1Data, u2 u2Offset, u2	len)
 {
 	if( len > BLE_PDU_LENGTH )
 	{
@@ -412,9 +427,14 @@ u4	LinkScanRspCfg(u1 *pu1Data, u2	len)
 	}
 	
 	memcpy(s_blkAdvStateInfo.m_pu1LinkScanRspData, pu1Data, len);
+	s_blkAdvStateInfo.m_u2ScanRspLen = len;
 	return 	DH_SUCCESS;
 }
 
+u2 LinkScanRspLenGet(void)
+{
+    return s_blkAdvStateInfo.m_u2ScanRspLen;
+}
 /**
  *@brief: 		LinkAdvStateInit
  *@details:		链路层广播状态初始化

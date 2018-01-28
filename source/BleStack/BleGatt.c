@@ -14,9 +14,9 @@ CREATE_MEMORY_INSTANCE(UUID_RESOURCE_POOL, (BLE_GATT_ATT_MAX_COUNT*2*UUID_TYPE_1
 
 typedef struct
 {
-    u2	u1AttMaxCount;                      /* 最大允许存在的属性 */
-    u2	u2AttCount;                         /* 当前属性个数 */
-    BlkBleAttribute	*blkBleServiceSets;     /* 当前属性数据库*/
+    u2	m_u1AttMaxCount;                      /* 最大允许存在的属性 */
+    u2	m_u2AttCount;                         /* 当前属性个数 */
+    BlkBleAttribute	*m_pblkBleServiceSets;    s/* 当前属性数据库*/
 } BlkBleGattInfo;
 
 static BlkBleGattInfo s_blkBleGattInfo;
@@ -92,6 +92,47 @@ BlkBleAttribute		BleServiceSets[BLE_GATT_ATT_MAX_COUNT] =
     },	/* 9 Rx value*/
 };
 
+
+static u1 CharPropsGet(BlkCharProperties CharProps)
+{
+    u1  u1Props = 0;
+
+    if( CharProps.m_u1BroadcastEnable)
+    {
+        u1Props |= ATT_PROPERTIES_BROADCAST;
+    }
+    else if( CharProps.m_u1ReadEnable )
+    {
+        u1Props |= ATT_PROPERTIES_READ;
+    }
+    else if( CharProps.m_u1WriteCmdEnable )
+    {
+        u1Props |= ATT_PROPERTIES_WRITE_WITHOUT_RSP;
+    }
+    else if( CharProps.m_u1WriteReqEnable )
+    {
+        u1Props |= ATT_PROPERTIES_WRITE;
+    }
+    else if( CharProps.m_u1NotifyEnable )
+    {
+        u1Props |= ATT_PROPERTIES_NOTIFY;
+    }
+    else if( CharProps.m_u1IndicateEnable )
+    {
+        u1Props |= ATT_PROPERTIES_INDICATE;
+    }
+    else if( CharProps.m_u1SignedWriteEnable )
+    {
+        u1Props |= ATT_PROPERTIES_AUTH_SIGN_WRITE;
+    }
+    else if( CharProps.m_u1ExtendedProps )
+    {
+        u1Props|= ATT_PROPERTIES_EXTEND_PEOPERTIES;
+    }
+
+    return u1Props;
+}
+
 /**
  *@brief: 		BleGattInfoInit
  *@details:		GATT层相关信息初始化
@@ -100,9 +141,9 @@ BlkBleAttribute		BleServiceSets[BLE_GATT_ATT_MAX_COUNT] =
 u4	BleGattInfoInit( void )
 {
     memset( &s_blkBleGattInfo, 0x00, sizeof( BlkBleGattInfo ) );
-    s_blkBleGattInfo.u2AttCount = 0;
-    s_blkBleGattInfo.u1AttMaxCount = BLE_GATT_ATT_MAX_COUNT;
-    s_blkBleGattInfo.blkBleServiceSets = BleServiceSets;
+    s_blkBleGattInfo.m_u2AttCount = 0;
+    s_blkBleGattInfo.m_u1AttMaxCount = BLE_GATT_ATT_MAX_COUNT;
+    s_blkBleGattInfo.m_pblkBleServiceSets = BleServiceSets;
 
     return DH_SUCCESS;
 }
@@ -126,13 +167,13 @@ u4	BleGattFindAttByHandle( u2 u2Handle, BlkBleAttribute **ppblkAtt )
         return ERR_GATT_INVALID_HANDLE;
     }
     /* 句柄允许到0xFFFF */
-    if( u2Handle > s_blkBleGattInfo.u2AttCount )
+    if( u2Handle > s_blkBleGattInfo.m_u2AttCount )
     {
         return ERR_GATT_NOT_FIND_ATT;
     }
     /* GATT层查找是从数组中查找，是从下标0开始的 */
     u2Handle -= 1;
-    *ppblkAtt = &s_blkBleGattInfo.blkBleServiceSets[u2Handle];
+    *ppblkAtt = &s_blkBleGattInfo.m_pblkBleServiceSets[u2Handle];
 
     return DH_SUCCESS;
 }
@@ -163,13 +204,13 @@ u4	BleGattFindAttByHandle( u2 u2Handle, BlkBleAttribute **ppblkAtt )
     }
 
     /* 规范要求16位uuid要补足128位后比较，这里就不做补足了直接比较*/
-    for( u2Index = 0; u2Index < s_blkBleGattInfo.u2AttCount; u2Index++ )
+    for( u2Index = 0; u2Index < s_blkBleGattInfo.m_u2AttCount; u2Index++ )
     {
-        pu1AttUUID = s_blkBleGattInfo.blkBleServiceSets[u2Index].attType.pu1Uuid;
-        AttUUIDType = s_blkBleGattInfo.blkBleServiceSets[u2Index].attType.uuidType;
+        pu1AttUUID = s_blkBleGattInfo.m_pblkBleServiceSets[u2Index].m_blkAttType.m_pu1Uuid;
+        AttUUIDType = s_blkBleGattInfo.m_pblkBleServiceSets[u2Index].m_blkAttType.m_u1UuidType;
         if ( ( UUIDType == AttUUIDType ) && ( memcmp( pu1AttUUID, pu1UUID, UUIDType ) == 0 ) )
         {
-            *ppblkAtt = &s_blkBleGattInfo.blkBleServiceSets[u2Index];
+            *ppblkAtt = &s_blkBleGattInfo.m_pblkBleServiceSets[u2Index];
             return DH_SUCCESS;
         }
     }
@@ -182,17 +223,17 @@ u4 BleGattAddServiceDecl(u1 *pu1ServiceUuid, u1 uuidType)
     u2 currCount;
     BlkBleAttribute  *currAtt;
     u1 *pu1Uuid;
-    currCount = s_blkBleGattInfo.u2AttCount;
-    if( currCount >= s_blkBleGattInfo.u1AttMaxCount )
+    currCount = s_blkBleGattInfo.m_u2AttCount;
+    if( currCount >= s_blkBleGattInfo.m_u1AttMaxCount )
     {
         return ERR_GATT_RESOURCE_INSUFFICCIENT;
     }
     if( UUID_TYPE_128BIT!=uuidType && UUID_TYPE_16BIT!=uuidType )
     {
-        return ERR_GATT_PARAMS_INVALID;
+        return ERR_GATT_INVALID_PARAMS;
     }
-    currAtt = s_blkBleGattInfo.blkBleServiceSets[currCount];
-    currAtt->attType.uuidType = UUID_TYPE_16BIT;
+    currAtt = s_blkBleGattInfo.m_pblkBleServiceSets[currCount];
+    currAtt->m_blkAttType.m_u1UuidType = UUID_TYPE_16BIT;
     pu1Uuid = DhMemoryAlloc(UUID_RESOURCE_POOL, UUID_TYPE_16BIT);
     if( NULL == pu1Uuid )
     {
@@ -200,7 +241,7 @@ u4 BleGattAddServiceDecl(u1 *pu1ServiceUuid, u1 uuidType)
     }
     pu1Uuid[0] = BLE_PRIMARY_SERVICE_UUID&0xff;
     pu1Uuid[1] = (BLE_PRIMARY_SERVICE_UUID>>8)&0xff;
-    currAtt->attType.pu1Uuid = pu1Uuid;
+    currAtt->m_blkAttType.m_pu1Uuid = pu1Uuid;
 
     pu1Uuid = DhMemoryAlloc(UUID_RESOURCE_POOL, uuidType);
     if( NULL == pu1Uuid )
@@ -208,17 +249,122 @@ u4 BleGattAddServiceDecl(u1 *pu1ServiceUuid, u1 uuidType)
         ERR_GATT_RESOURCE_INSUFFICCIENT;
     }
     memcpy(pu1Uuid, pu1ServiceUuid, uuidType);
-    currAtt->attValue.u2MaxSize = uuidType;
-    currAtt->attValue.u2CurrentLen = uuidType;
-    currAtt->attValue.pu1AttValue = pu1Uuid;
+    currAtt->m_blkAttValue.m_u2MaxSize = uuidType;
+    currAtt->m_blkAttValue.m_u2CurrentLen = uuidType;
+    currAtt->m_blkAttValue.m_pu1AttValue = pu1Uuid;
+    currAtt->m_u2AttPermission = ATT_PERMISSION_READ;
 
-    currAtt->attPermission = ATT_PERMISSION_READ;
-
+    s_blkBleGattInfo.m_u2AttCount++;
+    
     return DH_SUCCESS;
 }
 
-u4 BleGattAddCharacteristic(BlkCharacteristicCfg charaCfg, u2 *u2ValueHandle )
+u4 BleGattAddCharacteristic(BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u2BuffSize, u2 *pu2ValueHandle )
 {
+
+    u2 currCount;
+    BlkBleAttribute  *pblkCurrAtt;
+    u1 *pu1Uuid;
+    u1  *pu1AttValue;
+    u1  index=0;
     
+    currCount = s_blkBleGattInfo.m_u2AttCount;
+    if( currCount >= s_blkBleGattInfo.m_u1AttMaxCount )
+    {
+        return ERR_GATT_RESOURCE_INSUFFICCIENT;
+    }
+    if ( NULL==pu1CharValueBuff || NULL==pu2ValueHandle || NULL==charaCfg.m_blkUuid.m_pu1Uuid )
+    {
+        return ERR_GATT_INVALID_PARAMS;
+    }
+    if( UUID_TYPE_16BIT!=charaCfg.m_blkUuid.m_u1UuidType && UUID_TYPE_128BIT!=charaCfg.m_blkUuid.m_u1UuidType )
+    {
+        return ERR_GATT_INVALID_PARAMS;
+    }
+    /* 首先申请一个特性声明属性条目 */
+    pblkCurrAtt = s_blkBleGattInfo.m_pblkBleServiceSets[currCount];
+    pblkCurrAtt->m_blkAttType.m_u1UuidType = UUID_TYPE_16BIT;
+    pu1Uuid = DhMemoryAlloc(UUID_RESOURCE_POOL, UUID_TYPE_16BIT);
+    if ( NULL == pu1Uuid )
+    {
+        return ERR_GATT_RESOURCE_INSUFFICCIENT;
+    }
+    pu1Uuid[index++] = BLE_CHARACTERISTIC_DECLARATION_UUID&0xff;
+    pu1Uuid[index++] = (BLE_CHARACTERISTIC_DECLARATION_UUID>>8)&0xff;
+    pblkCurrAtt->m_blkAttType.m_pu1Uuid = pu1Uuid;
+    pblkCurrAtt->m_u2AttPermission = ATT_PERMISSION_READ;
+    /* 特性声明的值为 CharProps CharValueHandle CharUuid */
+     pu1AttValue = DhMemoryAlloc(1+2+charaCfg.m_blkUuid.m_u1UuidType);
+     if( NULL== pu1AttValue )
+     {
+        return ERR_GATT_RESOURCE_INSUFFICCIENT;
+     }
+     index = 0;
+     pu1AttValue[index++] = CharPropsGet(charaCfg.m_BlkCharProps);
+     pu1AttValue[index++] = (currCount+1)&0xff;     // 特性值紧随特性声明之后
+     pu1AttValue[index++] = ((currCount+1)>>8)&0xff;
+     memcpy(pu1AttValue+index, charaCfg.m_blkUuid.m_pu1Uuid, charaCfg.m_blkUuid.m_u1UuidType);
+     /* 配置特性声明的值 */
+     pblkCurrAtt->m_blkAttValue.m_pu1AttValue = pu1AttValue;
+     pblkCurrAtt->m_blkAttValue.m_u2MaxSize = 1+2+charaCfg.m_blkUuid.m_u1UuidType;
+     pblkCurrAtt->m_blkAttValue.m_u2CurrentLen = 1+2+charaCfg.m_blkUuid.m_u1UuidType;
+
+     /* 再申请特性值属性条目 */
+     currCount++;
+     pu1Uuid = DhMemoryAlloc(UUID_RESOURCE_POOL, charaCfg.m_blkUuid.m_u1UuidType);
+     if( NULL == pu1Uuid )
+     {
+        return ERR_GATT_RESOURCE_INSUFFICCIENT;
+     }
+     if( currCount >= s_blkBleGattInfo.m_u1AttMaxCount )
+     {
+         return ERR_GATT_RESOURCE_INSUFFICCIENT;
+     }
+     pblkCurrAtt = s_blkBleGattInfo.m_pblkBleServiceSets[currCount];
+
+     memcpy(pu1Uuid, charaCfg.m_blkUuid.m_pu1Uuid, charaCfg.m_blkUuid.m_u1UuidType);
+     pblkCurrAtt->m_blkAttType.m_u1UuidType = charaCfg.m_blkUuid.m_u1UuidType;
+     pblkCurrAtt->m_blkAttType.m_pu1Uuid = pu1Uuid;
+
+     pblkCurrAtt->m_u2AttPermission = charaCfg.m_u2ValuePermission;
+     pblkCurrAtt->m_blkAttValue.m_pu1AttValue = pu1CharValueBuff;
+     pblkCurrAtt->m_blkAttValue.m_u2MaxSize = u2BuffSize;
+     pblkCurrAtt->m_blkAttValue.m_u2CurrentLen = 0;
+
+    index = 0
+     if ( charaCfg.m_BlkCharProps.m_u1NotifyEnable || charaCfg.m_BlkCharProps.m_u1IndicateEnable  )
+     {
+        /* 再添加Client Characteristic Configuration 描述符 */
+        currCount++;
+        pu1Uuid = DhMemoryAlloc(UUID_RESOURCE_POOL, UUID_TYPE_16BIT);
+        if( NULL == pu1Uuid )
+        {
+           return ERR_GATT_RESOURCE_INSUFFICCIENT;
+        }
+        if( currCount >= s_blkBleGattInfo.m_u1AttMaxCount )
+        {
+            return ERR_GATT_RESOURCE_INSUFFICCIENT;
+        }
+        pblkCurrAtt = s_blkBleGattInfo.m_pblkBleServiceSets[currCount];
+        pu1Uuid[index++] = BLE_CCCD_UUID&0xff;
+        pu1Uuid[index++] = (BLE_CCCD_UUID>>8)&0xff;
+        pblkCurrAtt->m_blkAttType.m_u1UuidType = UUID_TYPE_16BIT;
+        pblkCurrAtt->m_blkAttType.m_pu1Uuid = pu1Uuid;
+        pu1AttValue = DhMemoryAlloc(UUID_RESOURCE_POOL, 2); // CCCD的值只有2字节，也从这里申请
+        pblkCurrAtt->m_blkAttValue.m_u2CurrentLen = 0;
+        pblkCurrAtt->m_blkAttValue.m_u2MaxSize = 2;
+        pblkCurrAtt->m_blkAttValue.m_pu1AttValue = pu1AttValue;
+        pblkCurrAtt->m_u2AttPermission = charaCfg.m_u2CCCDPermission;
+     }
+    currCount++;
+     s_blkBleGattInfo.m_u2AttCount = currCount;
 }
+
+
+
+
+
+
+
+
 
