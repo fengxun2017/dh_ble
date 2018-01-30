@@ -734,7 +734,7 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 			*/
 			s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter = s_blkConnStateInfo.m_u2connTimeoutBackup;
 
-			if( crcTrue )
+			if( crcTrue && (!(ret&LINK_RX_OLD_DATA)) )
 			{
 			    BleLinkDataHandle();
 			}

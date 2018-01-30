@@ -49,8 +49,10 @@ typedef struct
 #define ATT_PROPERTIES_AUTH_SIGN_WRITE			0x40
 #define ATT_PROPERTIES_EXTEND_PEOPERTIES		0x80
 
-#define UUID_TYPE_16BIT				2
-#define UUID_TYPE_128BIT			16
+#define UUID_TYPE_16BIT				            2
+#define UUID_TYPE_128BIT			            16
+
+#define BLE_ATT_INVALID_HANDLE					0x0000
 
 #ifdef __cplusplus
 #if __cplusplus

@@ -79,7 +79,6 @@
 #define ATT_GROUP_TYPE_PRIMARY_SERVICE			0x2800
 #define ATT_GROUP_TYPE_SECOND_SERVICE			0x2801
 
-#define ATT_INVALID_HANDLE						0x0000
 #define ATT_HANDLE_LEN							0x02
 #define UUID_FORMAT_16BIT						0x01
 #define UUID_FORMAT_128BIT						0x02
@@ -309,9 +308,9 @@ __INLINE static u4 AttWriteRsp(void)
 static u4 AttFindInfoReqHandle( u1  *pu1Req, u2 len )
 {
     BlkBleAttribute *pblkAtt = NULL;
-    u2	u2StartHandle = ATT_INVALID_HANDLE;
-    u2	u2EndHandle = ATT_INVALID_HANDLE;
-    u2	u2AttHandle = ATT_INVALID_HANDLE;
+    u2	u2StartHandle = BLE_ATT_INVALID_HANDLE;
+    u2	u2EndHandle = BLE_ATT_INVALID_HANDLE;
+    u2	u2AttHandle = BLE_ATT_INVALID_HANDLE;
     u1	index = 0;
     u4	ret;
     u1	uuidFormat;
@@ -332,7 +331,7 @@ static u4 AttFindInfoReqHandle( u1  *pu1Req, u2 len )
         return ret;
     }
 
-    if( ATT_INVALID_HANDLE == u2StartHandle || u2StartHandle > u2EndHandle )
+    if( BLE_ATT_INVALID_HANDLE == u2StartHandle || u2StartHandle > u2EndHandle )
     {
         ret = AttErrRsp( ATT_OPCODE_FIND_INFO_REQ, u2StartHandle, ATT_ERR_INVALID_HANDLE );
         return ret;
@@ -357,7 +356,7 @@ static u4 AttFindInfoReqHandle( u1  *pu1Req, u2 len )
             
             pu1Rsp[rspLen++] = u2AttHandle & 0xff;
             pu1Rsp[rspLen++] = ( u2AttHandle >> 8 ) & 0xff;
-            memcpy( pu1Rsp + rspLen, pblkAtt->m_blkAttType.m_u1UuidType, pblkAtt->m_blkAttType.m_u1UuidType );
+            memcpy( pu1Rsp + rspLen, pblkAtt->m_blkAttType.m_pu1Uuid, pblkAtt->m_blkAttType.m_u1UuidType );
             /* uuid的类型实际值就是UUID的长度 */
             rspLen += pblkAtt->m_blkAttType.m_u1UuidType;
         }
@@ -395,11 +394,11 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
     u1	pu1Rsp[BLE_ATT_MTU_SIZE - 2]; /* 去掉opcode和length所占字节 */
     u1	pu1AttValue[BLE_ATT_MTU_SIZE - 2 - 4]; /* Attribute Data List 响应格式为AttHandle(2B) EndGroupHandle(2B) AttValue */
     u1  u1AttValueLen = 0;
-    u2	u2StartHandle = ATT_INVALID_HANDLE;
-    u2	u2EndHandle = ATT_INVALID_HANDLE;
-    u2	u2AttHandle = ATT_INVALID_HANDLE;
-    u2	u2GroupEndHandle = ATT_INVALID_HANDLE;
-    u2  u2GroupStartHandle = ATT_INVALID_HANDLE;
+    u2	u2StartHandle = BLE_ATT_INVALID_HANDLE;
+    u2	u2EndHandle = BLE_ATT_INVALID_HANDLE;
+    u2	u2AttHandle = BLE_ATT_INVALID_HANDLE;
+    u2	u2GroupEndHandle = BLE_ATT_INVALID_HANDLE;
+    u2  u2GroupStartHandle = BLE_ATT_INVALID_HANDLE;
     u1	uuidType = 0;
     u1	pu1GroupType[UUID_TYPE_128BIT];
 
@@ -416,7 +415,7 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
     {
         return AttErrRsp( ATT_OPCODE_READ_BY_GROUP_TYPE_REQ, u2StartHandle, ATT_ERR_INVALID_PDU );
     }
-    if( ATT_INVALID_HANDLE == u2StartHandle || u2StartHandle > u2EndHandle )
+    if( BLE_ATT_INVALID_HANDLE == u2StartHandle || u2StartHandle > u2EndHandle )
     {
         return AttErrRsp( ATT_OPCODE_READ_BY_GROUP_TYPE_REQ, u2StartHandle, ATT_ERR_INVALID_HANDLE );
     }
@@ -440,7 +439,7 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
         {
             if( pblkAtt->m_blkAttType.m_u1UuidType == uuidType && memcmp(pblkAtt->m_blkAttType.m_pu1Uuid, pu1GroupType, uuidType) == 0 )
             {
-                if( ATT_INVALID_HANDLE != u2GroupStartHandle )  // 说明找到的不是第一个服务声明
+                if( BLE_ATT_INVALID_HANDLE != u2GroupStartHandle )  // 说明找到的不是第一个服务声明
                 {
                     /* 找到了后续服务声明，则前面的都属于上一个服务,先保存前一个服务的信息 */
                     u2GroupEndHandle = u2AttHandle - 1;         // 前面一个att属于上一个服务的最后一个att
@@ -478,7 +477,7 @@ static u4 AttReadByGroupTypeReqHandle( u1 *pu1Req, u2 len )
 		}
     }
     /* 还需要设置一下最后一个服务的信息 */
-    if( ATT_INVALID_HANDLE != u2GroupStartHandle )
+    if( BLE_ATT_INVALID_HANDLE != u2GroupStartHandle )
     {
         u2GroupEndHandle = u2AttHandle - 1;         // 前面一个att属于上一个服务的最后一个att
         pu1Rsp[rspLen++] = u2GroupStartHandle & 0xff;
@@ -514,9 +513,9 @@ static u4 AttReadByTypeReqHandle( u1 *pu1Req, u2 len )
     u2	rspLen = 0;
     u1  eachAttDataLen = 0;
     u1	pu1Rsp[BLE_ATT_MTU_SIZE - 2];           // 去掉opcode和length所占字节
-    u2	u2StartHandle = ATT_INVALID_HANDLE;
-    u2	u2EndHandle = ATT_INVALID_HANDLE;
-    u2	u2AttHandle = ATT_INVALID_HANDLE;
+    u2	u2StartHandle = BLE_ATT_INVALID_HANDLE;
+    u2	u2EndHandle = BLE_ATT_INVALID_HANDLE;
+    u2	u2AttHandle = BLE_ATT_INVALID_HANDLE;
     u1	uuidType = 0;
     u1	pu1FindType[UUID_TYPE_128BIT];
 
@@ -532,7 +531,7 @@ static u4 AttReadByTypeReqHandle( u1 *pu1Req, u2 len )
     {
         return AttErrRsp( ATT_OPCODE_READ_BY_TYPE_REQ, u2StartHandle, ATT_ERR_INVALID_PDU );
     }
-    if( ATT_INVALID_HANDLE == u2StartHandle || u2StartHandle > u2EndHandle )
+    if( BLE_ATT_INVALID_HANDLE == u2StartHandle || u2StartHandle > u2EndHandle )
     {
         return AttErrRsp( ATT_OPCODE_READ_BY_TYPE_REQ, u2StartHandle, ATT_ERR_INVALID_HANDLE );
     }
@@ -598,8 +597,8 @@ static u4 AttReadReqHandle(u1 *pu1Req, u2 len)
 {
     BlkBleAttribute *pblkAtt = NULL;
     u1  pu1AttValue[BLE_ATT_MTU_SIZE-1];    // 去掉opcode所占字节
-    u2  u2AttValueLen = ATT_INVALID_HANDLE;
-    u2  u2AttHandle = ATT_INVALID_HANDLE;
+    u2  u2AttValueLen = BLE_ATT_INVALID_HANDLE;
+    u2  u2AttHandle = BLE_ATT_INVALID_HANDLE;
     u1  index = 0;
     if( NULL == pu1Req )
     {
@@ -636,7 +635,7 @@ static u4 AttReadReqHandle(u1 *pu1Req, u2 len)
 static u4 AttWriteCommandHandle(u1 *pu1Req, u2 len)
 {
     BlkBleAttribute *pblkAtt = NULL;
-    u2  u2AttHandle = ATT_INVALID_HANDLE;
+    u2  u2AttHandle = BLE_ATT_INVALID_HANDLE;
     u2  u2ValueLen;
     u1  index = 0;
 
@@ -678,7 +677,7 @@ static u4 AttWriteCommandHandle(u1 *pu1Req, u2 len)
 static u4 AttWriteReqHandle(u1* pu1Req, u2 len)
 {
     BlkBleAttribute *pblkAtt = NULL;
-    u2  u2AttHandle = ATT_INVALID_HANDLE;
+    u2  u2AttHandle = BLE_ATT_INVALID_HANDLE;
     u2  u2ValueLen;
     u1  index = 0;
 

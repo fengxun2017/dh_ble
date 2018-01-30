@@ -1,135 +1,99 @@
 #include "../include/DhGlobalHead.h"
 
-u1 TestValue = 1;
-u4 count= 0;
-void TestHandler2(void *pContext);
-void TestHandler3(void *pContext);
+#define ADV_INTERVAL_MS     1000
 
-void TestHandler(void *pContext)
+u4 BleStackInit(void)
 {
-	static  u1 LPTimer0Count = 0;
+	BleLinkInit();
+	return BleGattInfoInit();
+}
+
+u4 BleAdvDataInit(void)
+{
+    /* L T V 格式的广播数据 */
+//    u1 pu1AdvData[]={0x07,0x09,'D','H','_','B','L','E'};      // 广播名
+    u1 pu1ScanRspData[]={0x06,0xFF,0x33,0x33,0x33,0x33,0x33};   // 厂商自定义数据 
 	
-	if(LPTimer0Count >=5){ 	DEBUG_INFO("LP0");return;}
-	DEBUG_INFO("LP0");
+    BleAdvDataCfg(NULL, 0);
+    BleScanRspDataCfg(pu1ScanRspData, sizeof(pu1ScanRspData));
 
-	BleLPowerTimerStart(BLE_LP_TIMER0, 1000000, TestHandler, &TestValue);	
-	count = 0;
-	BleLPowerTimerStart(BLE_LP_TIMER1,200000,TestHandler2, NULL);
-	if(LPTimer0Count == 2)
-	{
-		BleLPowerTimerStart(BLE_LP_TIMER2,300000,TestHandler3, NULL);
-	}
-	LPTimer0Count++;
+    return DH_SUCCESS;
 }
 
-void TestCalRtc(void *pContext)
-{
-	BleLPowerTimerStart(BLE_LP_TIMER0, 1000000, TestCalRtc, &TestValue);	
-	count++;
-	DEBUG_INFO("count:%d",count);
-}
-void TestHandler2(void *pContext)
-{
-	count++;
-	if(count<2)
-	{
-		BleLPowerTimerStart(BLE_LP_TIMER1,200000,TestHandler2, NULL);
-	}
-	DEBUG_INFO("LP1");
-}
-
-void TestHandler3(void *pContext)
-{
-		DEBUG_INFO("LP2");	
-		BleLPowerTimerStop(BLE_LP_TIMER1);
-}
-
-void TestHATimerHandler(void *pContext)
-{
-//	BleHAccuracyTimerStart(BLE_HA_TIMER0, 1000000, TestHATimerHandler, NULL);
-//	nrf_gpio_pin_toggle(22);
-//	DEBUG_INFO("high accuracy timerout");
-	BleLPowerTimerStop(BLE_LP_TIMER0);
-}
-
-void delayMs(u4 ms)
-{
-	volatile u4 i, j;
-	for(i = 0; i<ms; i++)
-	{
-		for(j = 0; j<16; j++);
-	}
-}
-//int main(void)
-//{
-//	DEBUG_INFO("!!!!!!!!!!!!!!!!!!!!START!!!!!!!!!!!!!!!!!");
-//	nrf_gpio_cfg_output(22);
-//	nrf_gpio_pin_clear(22);
-//	nrf_gpio_cfg_input(20, NRF_GPIO_PIN_PULLUP);
-//	
-//	BleLPowerTimerInit();
-//	BleHAccuracyTimerInit();
-//	BleLPowerTimerStart(BLE_LP_TIMER0, 1000000, TestHandler, &TestValue);
-//	BleLPowerTimerStart(BLE_LP_TIMER1,200000,TestHandler2, NULL);
-//	BleHAccuracyTimerStart(BLE_HA_TIMER0, 4200000, TestHATimerHandler, NULL);
-//	while(1)
-//	{
-//		if(nrf_gpio_pin_read(20)==0)
-//		{
-//			delayMs(10);
-//			BleLPowerTimerStart(BLE_LP_TIMER0, 1000000, TestHandler, &TestValue);
-//			while(nrf_gpio_pin_read(20)==0);
-//		}
-//	}
-//	return 0;
-//}
-//int main(void)
-//{
-//	DEBUG_INFO("!!!!!!!!!!!!!!!!!!!!START!!!!!!!!!!!!!!!!!");
-//	nrf_gpio_cfg_output(22);
-//	nrf_gpio_pin_clear(22);
-//	nrf_gpio_cfg_input(20, NRF_GPIO_PIN_PULLUP);
-//	
-//	BleLinkInit();
-//	BleLPowerTimerStart(BLE_LP_TIMER0, 2000000, TestCalRtc, &TestValue);
-//	while(1)
-//	{
-//		if(nrf_gpio_pin_read(20)==0)
-//		{
-//			while(nrf_gpio_pin_read(20)==0);
-//		}
-//	}
-//	return 0;
-//}
-
-u1 test_data[]={0,0,3,2,3,4,5,6,0x02,0x01,0x04,0x06,0x09,0x31,0x31,0x32,0x32,0x32};
-u1 test_data2[]={4,0,3,2,3,4,5,6,0x06,0xFF,0x33,0x33,0x33,0x33,0x33};
-
-int main(void)
+u4 AdvertisingStart(void)
 {
 	BlkAdvChannelOn channelOn;
+	
+	channelOn.m_ChannelOn_37 = 0;
+	channelOn.m_ChannelOn_38 = 1;
+	channelOn.m_ChannelOn_39 = 0;
+	BleAdvStart(channelOn, ADV_INTERVAL_MS);
+	return DH_SUCCESS;
+}
+
+u2 g_u2RxHandle;
+u2 g_u2TxHandle;
+
+u4 DemoServiceInit(void)
+{
+    u1  pu1MyServiceUuid[] = {0x00,0xFF};
+    u1  pu1CharTxUuid[] = {0x01,0xFF};
+    static u1  pu1CharTxBuff[BLE_ATT_MTU_SIZE]; // 特性值的缓存需要应用层提供，所以需要设置成静态变量
+    u1  pu1CharRxUuid[] = {0x02,0xFF};
+    static u1  pu1CharRxBuff[BLE_ATT_MTU_SIZE];
+    BlkGattCharCfg charCfg;
+
+
+	BleGattServiceDeclAdd(pu1MyServiceUuid, UUID_TYPE_16BIT);
+    charCfg.m_BlkCharProps.m_u1ReadEnable = 1;
+    charCfg.m_BlkCharProps.m_u1WriteCmdEnable = 1;
+    charCfg.m_blkUuid.m_pu1Uuid = pu1CharRxUuid;
+    charCfg.m_blkUuid.m_u1UuidType = UUID_TYPE_16BIT;
+    charCfg.m_u2ValuePermission = ATT_PERMISSION_READ | ATT_PERMISSION_WRITE;
+    BleGattCharacteristicAdd(charCfg, pu1CharRxBuff, sizeof(pu1CharRxBuff), &g_u2RxHandle);
+    DEBUG_INFO("Rx Handle:%02X",g_u2RxHandle);
+
+    charCfg.m_BlkCharProps.m_u1ReadEnable = 1;
+    charCfg.m_BlkCharProps.m_u1WriteReqEnable = 1;
+    charCfg.m_BlkCharProps.m_u1NotifyEnable = 1;
+    charCfg.m_blkUuid.m_pu1Uuid = pu1CharTxUuid;
+    charCfg.m_blkUuid.m_u1UuidType = UUID_TYPE_16BIT;
+    charCfg.m_u2ValuePermission = ATT_PERMISSION_READ | ATT_PERMISSION_WRITE;
+    BleGattCharacteristicAdd(charCfg, pu1CharTxBuff, sizeof(pu1CharTxBuff), &g_u2TxHandle);
+    DEBUG_INFO("Rx Handle:%02X",g_u2TxHandle);
+	
+	return DH_SUCCESS;
+}
+
+void LowPower(void)
+{
+    __SEV();
+    __WFE();
+    __WFE();
+}
+int main(void)
+{
 	BlkBleAddrInfo	addr;
 	
 	addr.m_u1AddrType = 0;
-	addr.m_pu1Addr[0] = 0x03;addr.m_pu1Addr[1] = 0x02;addr.m_pu1Addr[2] = 0x03;
+	addr.m_pu1Addr[0] = 0x05;addr.m_pu1Addr[1] = 0x02;addr.m_pu1Addr[2] = 0x03;
 	addr.m_pu1Addr[3] = 0x04;addr.m_pu1Addr[4] = 0x05;addr.m_pu1Addr[5] = 0x06;
-	channelOn.m_ChannelOn_37 = 1;
-	channelOn.m_ChannelOn_38 = 1;
-	channelOn.m_ChannelOn_39 = 1;
+
 	DEBUG_INFO("start");
+    BleStackInit(); // 必现首先调用协议栈初始化
 
 	
-	test_data[1] = 6+10;
-	test_data2[1] = 13;
-	BleLinkInit();
-	LinkAdvDataCfg(test_data, sizeof(test_data));
-	LinkScanRspCfg(test_data2, sizeof(test_data2));
-	LinkAdvParamsCfg(channelOn, 200);
-	LinkAdvAddrInfoCfg(addr);
-	BleGattInfoInit();
-
-	LinkAdvStart();
-	
-	while(1);
+    /* 名字和地址要在广播数据设置之前设置好 */
+	BleGapDeviceNameCfg("DH_BLE", strlen("DH_BLE"));
+	BleGapAddrCfg(addr);
+    
+    BleAdvDataInit();
+    DemoServiceInit();
+    AdvertisingStart();
+    
+	while(1)
+	{
+        LowPower();
+	}
 	return 0;
 }

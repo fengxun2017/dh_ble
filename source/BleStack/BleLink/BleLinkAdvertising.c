@@ -24,16 +24,6 @@ char *ADV_SUB_STATE[5] = {"adv_idle","adv_tx","adv_rx","adv_txscanrsp","adv_rxti
 #define ADV_CHANNEL_SWITCH_TO_FIRST			1						/* 强制从第一个通道开始广播*/
 #define ADV_RX_WAIT_TIMEOUT					(800)					/* 每个通道上广播完后等待扫描请求或者连接请求的超时时间*/
 
-/* 广播通道下的帧类型 */
-#define PDU_TYPE_ADV					(0x00)		/* 普通广播 */
-#define PDU_TYPE_ADV_DIRECT				(0x01)		/* 直接广播 */
-#define PDU_TYPE_ADV_NONCONN			(0x02)		/* 不可连接不可扫描广播 */
-#define PDU_TYPE_SCAN_REQ				(0x03)		/* 扫描请求 */
-	#define SCAN_REQ_SCANA_SIZE			(6)
-	#define SCAN_REQ_ADVA_SIZE			(6)
-#define PDU_TYPE_SCAN_RSP				(0x04)		/* 扫描响应 */
-#define PDU_TYPE_CONNECT_REQ			(0x05)		/* 连接请求 */
-#define PDU_TYPE_ADV_SCAN				(0x06)		/* 不可连接可扫描广播 */
 
 /* ble规范相关的一些定义 */
 #define HEADER_PDU_TYPE_POS				(0)
@@ -224,14 +214,10 @@ __INLINE static void AdvRxWaitTimeoutHandler(void *pvalue)
 __INLINE static void AdvTxScanRsp(void)
 {
 	u1 channel;
-	u1 whiteIv;
 
 	channel = s_blkAdvStateInfo.m_u1CurrentChannel;				// 获取当前接收到扫描请求的通道
 	if( ADV_ROUND_OVER != channel )
-	{
-	
-		//whiteIv = GetChannelWhiteIv(channel);									// 配置白化初值
-    	//BleRadioWhiteIvCfg(whiteIv);
+	{	
     	BleRadioTxData(channel, s_blkAdvStateInfo.m_pu1LinkScanRspData, BLE_PDU_LENGTH);	// 长度字段实际没有作用	
     	LinkAdvSubStateSwitch(ADV_TX_SCANRSP);
 		DEBUG_INFO("tx scan rsp on channel:%d", channel);
@@ -401,7 +387,10 @@ u4 LinkAdvDataCfg(u1 *pu1Data, u2 u2Offset, u2	len)
 	}
 	
 	memcpy(s_blkAdvStateInfo.m_pu1LinkTxData+u2Offset, pu1Data, len);
-	s_blkAdvStateInfo.m_u2AdvLen = len;
+	if( BLE_PDU_HEADER_LENGTH == u2Offset )
+	{
+	    s_blkAdvStateInfo.m_u2AdvLen = len;
+	}
 	return 	DH_SUCCESS;
 }
 
@@ -421,13 +410,16 @@ u2 LinkAdvDataLenGet(void)
  */
 u4	LinkScanRspCfg(u1 *pu1Data, u2 u2Offset, u2	len)
 {
-	if( len > BLE_PDU_LENGTH )
+	if( (len+u2Offset) > BLE_PDU_LENGTH )
 	{
 		return ERR_LINK_INVALID_LEN;
 	}
 	
-	memcpy(s_blkAdvStateInfo.m_pu1LinkScanRspData, pu1Data, len);
-	s_blkAdvStateInfo.m_u2ScanRspLen = len;
+	memcpy(s_blkAdvStateInfo.m_pu1LinkScanRspData+u2Offset, pu1Data, len);
+	if( BLE_PDU_HEADER_LENGTH == u2Offset )
+	{
+	    s_blkAdvStateInfo.m_u2ScanRspLen = len;
+	}
 	return 	DH_SUCCESS;
 }
 

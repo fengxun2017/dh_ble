@@ -6,7 +6,7 @@
 */
 #include "../../include/DhGlobalHead.h"
 
-#define BLE_LINK_CONTROL_DEBUG
+#define nBLE_LINK_CONTROL_DEBUG
 
 #if !defined(BLE_LINK_CONTROL_DEBUG)
 #undef DEBUG_INFO

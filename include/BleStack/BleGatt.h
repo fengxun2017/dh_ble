@@ -6,6 +6,8 @@
 */
 #ifndef __BLEGATT_H__
 #define __BLEGATT_H__
+#include "../DhGlobalHead.h"
+
 
 #define BLE_PRIMARY_SERVICE_UUID				0x2800	
 #define BLE_INCLUDE_UUID						0x2802
@@ -51,6 +53,9 @@ extern "C"{
 extern u4	BleGattFindAttByHandle(u2 u2Handle, BlkBleAttribute **ppblkAtt);
 extern u4 BleGattFindAttByType(u2 u2StartHandle, u2 u2EndHandle, u1 *pu1UUID, u1 UUIDType, BlkBleAttribute **ppblkAtt);
 extern u4	BleGattInfoInit(void);
+extern u4 BleGattServiceDeclAdd(u1 *pu1ServiceUuid, u1 uuidType);
+extern u4 BleGattCharacteristicAdd(BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u2BuffSize, u2 *pu2ValueHandle );
+extern u2 BleDeviceNameAttHandleGet(void);
 
 
 #ifdef __cplusplus

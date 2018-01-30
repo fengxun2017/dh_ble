@@ -1,6 +1,7 @@
 
 #ifndef __DHBUFFMANAGE_H__
 #define __DHBUFFMANAGE_H__
+#include "../DhGlobalHead.h"
 
 typedef struct
 {
@@ -9,10 +10,10 @@ typedef struct
     u1  *m_pu1Buff;
 }BlkDhMemoryManage;
 
-#define CREATE_MEMORY_INSTANCE(BUFF_NAME, BUFF_SIZE)			\
-	static u1 BUFF_NAME##_BUFF[BUFF_SIZE];							\
-	static BlkDhMemoryManage  BUFF_NAME##INSTANCE = {0, BUFF_SIZE, BUFF_NAME##BUFF}\
-	static BlkDhMemoryManage *BUFF_NAME = &BUFF_NAME##INSTANCE
+#define CREATE_MEMORY_INSTANCE(BUFF_NAME, BUFF_SIZE)									\
+	static u1 BUFF_NAME##_BUFF[BUFF_SIZE];												\
+	static BlkDhMemoryManage  BUFF_NAME##_INSTANCE = {0, BUFF_SIZE, BUFF_NAME##_BUFF};	\
+	static BlkDhMemoryManage *BUFF_NAME = &BUFF_NAME##_INSTANCE
 
 
 #ifdef __cplusplus

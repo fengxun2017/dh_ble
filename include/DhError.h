@@ -42,6 +42,8 @@
 #define ERR_DH_MEMORY_PARAMS_IINVALID       (ERR_DH_MEMORY_BASE+0x000001)
 #define ERR_DH_MEMORY_INSUFFICIENT          (ERR_DH_MEMORY_BASE+0x000002)
 
-#define ERR_GAP_ADV_BASE                    (0xF7000000)
-#define ERR_GAP_ADV_INVALID_PARAMS          (ERR_GAP_ADV_BASE+0x000001)
-
+#define ERR_GAP_BASE                        (0xF7000000)
+#define ERR_GAP_ADV_INVALID_PARAMS          (ERR_GAP_BASE+0x000001)
+#define ERR_GAP_INTERNAL                    (ERR_GAP_BASE+0x000002)
+#define ERR_GAP_INVALID_PARAMS              (ERR_GAP_BASE+0x000003)
+#define ERR_GAP_BUFF_LEN                    (ERR_GAP_BASE+0x000004)

@@ -8,13 +8,16 @@
 #define __BLELINKADVERTISING_H__
 #include "../../DhGlobalHead.h"
 
-typedef struct 
-{
-	u1	m_ChannelOn_37:1;
-	u1	m_ChannelOn_38:1;
-	u1	m_ChannelOn_39:1;
-}BlkAdvChannelOn;
-
+/* 广播通道下的帧类型 */
+#define PDU_TYPE_ADV					(0x00)		/* 普通广播 */
+#define PDU_TYPE_ADV_DIRECT				(0x01)		/* 直接广播 */
+#define PDU_TYPE_ADV_NONCONN			(0x02)		/* 不可连接不可扫描广播 */
+#define PDU_TYPE_SCAN_REQ				(0x03)		/* 扫描请求 */
+	#define SCAN_REQ_SCANA_SIZE			(6)
+	#define SCAN_REQ_ADVA_SIZE			(6)
+#define PDU_TYPE_SCAN_RSP				(0x04)		/* 扫描响应 */
+#define PDU_TYPE_CONNECT_REQ			(0x05)		/* 连接请求 */
+#define PDU_TYPE_ADV_SCAN				(0x06)		/* 不可连接可扫描广播 */
 
 #ifdef __cplusplus
 #if __cplusplus

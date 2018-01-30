@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file				BleConfig.h
  * @brief			ble的一些协议配置
  * @author			fengxun
@@ -26,6 +26,10 @@
 
 /* 目前只支持默认包，不支持协议自动分包 */
 #define BLE_ATT_MTU_SIZE			BLE_ATT_MTU_DEFALUT_SIZE
+
+/* 按一个广播包来看 37，去掉6字节地址，去掉3字节广播flag, 去掉 L T 2字节还剩可以放名字26字节 */
+#define BLE_DEV_NAME_MAX_SIZE       (26)     
+
 /* 广播的接入地址是固定的*/
 #define BLE_ADV_ACCESS_ADDR			(0x8E89BED6)
 
