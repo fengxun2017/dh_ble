@@ -294,7 +294,8 @@ u4 BleGattCharacteristicAdd( BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u
 {
 
     u2 currCount;
-    BlkBleAttribute  *pblkCurrAtt;
+    BlkBleAttribute *pblkCurrAtt;
+    BlkBleAttribute *pblkAttValue;
     u1 *pu1Uuid;
     u1  *pu1AttValue;
     u1  index = 0;
@@ -362,6 +363,8 @@ u4 BleGattCharacteristicAdd( BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u
     pblkCurrAtt->m_blkAttValue.m_pu1AttValue = pu1CharValueBuff;
     pblkCurrAtt->m_blkAttValue.m_u2MaxSize = u2BuffSize;
     pblkCurrAtt->m_blkAttValue.m_u2CurrentLen = 0;
+    pblkAttValue = pblkCurrAtt;
+    
     if( NULL != pu2ValueHandle )
     {
         *pu2ValueHandle = (currCount+1);	// handle的值为数组下标+1，因为0x0000是无效的handle
@@ -390,6 +393,8 @@ u4 BleGattCharacteristicAdd( BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u
         pblkCurrAtt->m_blkAttValue.m_u2MaxSize = 2;
         pblkCurrAtt->m_blkAttValue.m_pu1AttValue = pu1AttValue;
         pblkCurrAtt->m_u2AttPermission = charaCfg.m_u2CCCDPermission;
+        pblkAttValue->m_u2CCCDHandle = currCount+1;     // handle值为数组下标+1
+        
     }
     currCount++;
     s_blkBleGattInfo.m_u2AttCount = currCount;
@@ -397,8 +402,36 @@ u4 BleGattCharacteristicAdd( BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u
     return DH_SUCCESS;
 }
 
+static u1 IsNotifyEnable()
+{
+    
+}
 
-
+u4 BleGattSendNotify(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
+{
+    /* 检查notify 是否使能了 */
+    BlkBleAttribute *pblkAtt;
+    BlkBleAttribute *pblkCccd;
+    u1  pu1Cccd[2];
+    u2  cccdHandle;
+    BleGattFindAttByHandle(u2AttHandle, &pblkAtt);
+    
+    if ( NULL == pblkAtt )
+    {
+        return ERR_GATT_INVALID_HANDLE;
+    }
+    cccdHandle = pblkAtt->m_u2CCCDHandle;
+    BleGattFindAttByHandle(cccdHandle, &pblkCccd);
+    if ( NULL == pblkCccd )
+    {
+        return ERR_GATT_INVALID_HANDLE;
+    }
+    
+    
+    
+    
+    
+}
 
 
 

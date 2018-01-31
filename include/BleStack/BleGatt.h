@@ -23,6 +23,13 @@
 #define BLE_SERVICE_CHANGED_UUID				0x2A05
 
 
+typedef struct
+{
+    u2  m_u2AttHandle;
+    u1  m_pu1AttValue[BLE_ATT_MTU_MAX_SIZE];
+}BlkBleRecvWriteEvent;
+
+
 /* 特征值具有的特性 */
 typedef struct 
 {
@@ -50,6 +57,7 @@ typedef struct
 extern "C"{
 #endif
 #endif /* __cplusplus */
+
 extern u4	BleGattFindAttByHandle(u2 u2Handle, BlkBleAttribute **ppblkAtt);
 extern u4 BleGattFindAttByType(u2 u2StartHandle, u2 u2EndHandle, u1 *pu1UUID, u1 UUIDType, BlkBleAttribute **ppblkAtt);
 extern u4	BleGattInfoInit(void);

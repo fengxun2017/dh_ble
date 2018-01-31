@@ -25,6 +25,7 @@ typedef struct
 	BlkAttributeType	m_blkAttType;
 	BlkAttributeValue	m_blkAttValue;
 	u2					m_u2AttPermission;		/* 许可条件，上层自定义实现*/
+	u2                  m_u2CCCDHandle;
 }BlkBleAttribute;
 
 

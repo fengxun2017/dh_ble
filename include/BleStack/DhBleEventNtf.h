@@ -25,6 +25,12 @@ typedef enum
 typedef struct
 {
 	EnBleEvtType   m_u2EvtType;			// 事件类型
+	union
+	{
+        BlkBleRecvWriteEvent    m_blkWriteInfo;
+        BlkBleConnectedEvent    m_blkConnInfo;
+        BlkBleDisconnectedEvent m_blkDisconnInfo;
+	}m_blkEventInfo;
 }BlkBleEvent;
 
 typedef void (*BleEventHandler)(BlkBleEvent *event);

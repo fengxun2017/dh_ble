@@ -17,7 +17,8 @@ typedef struct
 }BlkDhQueue;
 
 /* 
-    队列创建
+        队列创建
+    !!!!!!!!!!!!!   队列大小需要时2^n         !!!!!!!!!!!!!!!!!!
 */
 #define CREATE_QUEUE_INSTANCE(QUEUE_NAME, QUEUE_ELEM_TYPE, QUEUE_SIZE)			\
 	static QUEUE_ELEM_TYPE QUEUE_NAME##_BUFF[QUEUE_SIZE];							\

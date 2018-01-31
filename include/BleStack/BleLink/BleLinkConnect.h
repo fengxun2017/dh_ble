@@ -12,7 +12,15 @@ typedef struct
 {
     u1  m_u1PeerBleAddrType;
     u1  m_pu1PeerBleAddr[BLE_ADDR_LEN];
-}BlkBleConnInfo;
+    u2  m_u2ConnInterval;
+    u2  m_u2SlaveLatency;
+    u2  m_u2ConnTimeout;
+}BlkBleConnectedEvent;
+
+typedef struct
+{
+    u1  m_u1ErrCode;
+}BlkBleDisconnectedEvent;
 
 
 
