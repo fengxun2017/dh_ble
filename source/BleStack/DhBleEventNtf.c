@@ -66,8 +66,8 @@ void BLE_EVENT_NTF_IRQ_HANDLER(void)
 		if( NULL != pBleEvent)
 		{
 			bleEvent = *pBleEvent;
-			s_bleEventHandler(&bleEvent);
 			QueuePop(BLE_EVENT_NTF_QUEUE);
+			s_bleEventHandler(&bleEvent);
 		}
 	}while(NULL != pBleEvent );
 }

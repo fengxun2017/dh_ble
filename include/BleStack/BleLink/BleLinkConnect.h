@@ -8,6 +8,14 @@
 #define __BLELINKCONNECT_H__
 #include "../../DhGlobalHead.h"
 
+typedef struct
+{
+    u1  m_u1PeerBleAddrType;
+    u1  m_pu1PeerBleAddr[BLE_ADDR_LEN];
+}BlkBleConnInfo;
+
+
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C"{

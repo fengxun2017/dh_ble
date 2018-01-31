@@ -8,6 +8,13 @@
 #define __BLELINKCONTROL_H__
 #include "../../DhGlobalHead.h"
 
+
+
+typedef struct
+{
+    u1  m_u1ErrCode;
+}BlkBleDisconnectReason;
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C"{

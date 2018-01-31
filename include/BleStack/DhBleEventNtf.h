@@ -12,12 +12,19 @@
 #define DH_BLE_CONNECTED				// 蓝牙连接
 #define DH_BLE_DISCONNECTED				// 蓝牙断开
 
+typedef enum
+{
+    BLE_EVENT_CONNECTED = 0x0001,
+    BLE_EVENT_DISCONNECTED,
+    BLE_EVENT_RECV_WRITE,
+    BlE_EVENT_RECV_HVC,                 // handle value confirm 对indication的响应 
+}EnBleEvtType;
 
 
 
 typedef struct
 {
-	u2	m_u2EvtType;			// 事件类型
+	EnBleEvtType   m_u2EvtType;			// 事件类型
 }BlkBleEvent;
 
 typedef void (*BleEventHandler)(BlkBleEvent *event);

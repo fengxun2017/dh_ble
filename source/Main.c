@@ -2,11 +2,7 @@
 
 #define ADV_INTERVAL_MS     1000
 
-u4 BleStackInit(void)
-{
-	BleLinkInit();
-	return BleGattInfoInit();
-}
+
 
 u4 BleAdvDataInit(void)
 {
@@ -65,6 +61,15 @@ u4 DemoServiceInit(void)
 	return DH_SUCCESS;
 }
 
+
+u4 BleStackInit(void)
+{
+    DhBleEventNtfInit();
+    DhBleEventHandlerReg();
+	BleLinkInit();
+	
+	return BleGattInfoInit();
+}
 void LowPower(void)
 {
     __SEV();
