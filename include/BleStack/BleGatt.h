@@ -26,6 +26,7 @@
 typedef struct
 {
     u2  m_u2AttHandle;
+    u2  m_u2WriteLen;
     u1  m_pu1AttValue[BLE_ATT_MTU_MAX_SIZE];
 }BlkBleRecvWriteEvent;
 

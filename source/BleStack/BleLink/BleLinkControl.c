@@ -123,7 +123,7 @@ u4 CheckLinkChannelMapUpdateReq(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *pu2Instant
     u1  opcode;
     u2  len;
     u1  index = 0;
-    if( NULL==pu1PDU || NULL==pu1NewChannelMap )
+    if( NULL==pu1PDU || NULL==pu1NewChannelMap || NULL==pu2Instant)
     {
         return ERR_LINK_INVALID_PARAMS;
     }
@@ -195,6 +195,22 @@ u4 CheckLinkConnUpdateReq(u1 *pu1PDU, u1 *u1WinSize, u2 *u2WinOffset, u2 *u2Inte
     return ERR_LINK_NOT_CONN_UPDATE_REQ;    // 不是conn update控制请求
 }
 
+static u4 LinkTerminateHandle(u1 *pu1Data, u2 len)
+{
+    u1  reason;
+    BlkBleEvent bleEvt;
+    
+    if( NULL == pu1Data || 0==len )
+    {
+        return ERR_LINK_INVALID_PARAMS;
+    }
+    reason = pu1Data[0];
+    bleEvt.m_u2EvtType = BLE_EVENT_DISCONNECTED;
+    bleEvt.m_event.m_blkDisconnInfo.m_u1ErrCode = reason;
+    BleEventPush(bleEvt);
+    
+    return DH_SUCCESS;
+}
 u4 BleLinkControlHandle(u1 *pu1Data, u2 len)
 {
 	u1	opcode;
@@ -214,6 +230,7 @@ u4 BleLinkControlHandle(u1 *pu1Data, u2 len)
 		break;
 
 		case LL_TERMINATE_IND:
+			LinkTerminateHandle(pu1Data+0x01, len-1);
 		break;
 		
 		case LL_ENC_REQ:

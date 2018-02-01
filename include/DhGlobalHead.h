@@ -48,10 +48,10 @@ extern "C"{
 #include "./BleStack/BleLink/BleLinkAdvertising.h"
 #include "./BleStack/BleLink/BleLinkConnect.h"
 #include "./BleStack/BleLink/BleLinkControl.h"
-#include "./BleStack/DhBleEventNtf.h"
 #include "./BleStack/BleL2cap.h"
 #include "./BleStack/BleAtt.h"
 #include "./BleStack/BleGatt.h"
 #include "./BleStack/BleGap.h"
+#include "./BleStack/DhBleEventNtf.h"
 
 #endif /* __DHGLOBALHEAD_H__ */

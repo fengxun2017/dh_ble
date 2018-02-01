@@ -31,12 +31,12 @@ void DhBleEventHandlerReg(BleEventHandler handler)
 
 
 /**
- *@brief: 		DhBleEventPush
+ *@brief: 		BleEventPush
  *@details:		BLE事件入队，通知上层应用
  *@param[in]	BlkBleEvent event  
  *@retval:		
  */
-u4 DhBleEventPush(BlkBleEvent event)
+u4 BleEventPush(BlkBleEvent event)
 {
 	BlkBleEvent *pBlkEvent;
 	pBlkEvent = (BlkBleEvent *)QueueEmptyElemGet(BLE_EVENT_NTF_QUEUE, sizeof(BlkBleEvent));
@@ -67,7 +67,10 @@ void BLE_EVENT_NTF_IRQ_HANDLER(void)
 		{
 			bleEvent = *pBleEvent;
 			QueuePop(BLE_EVENT_NTF_QUEUE);
-			s_bleEventHandler(&bleEvent);
+			if( NULL != s_bleEventHandler )
+			{
+			    s_bleEventHandler(bleEvent);
+			}
 		}
 	}while(NULL != pBleEvent );
 }

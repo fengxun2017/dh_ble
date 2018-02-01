@@ -6,7 +6,7 @@
 */
 #ifndef __NRFTIMERDRV_H__
 #define __NRFTIMERDRV_H__
-#include "../DhGlobalHead.h"
+#include "../../DhGlobalHead.h"
 
 typedef enum
 {

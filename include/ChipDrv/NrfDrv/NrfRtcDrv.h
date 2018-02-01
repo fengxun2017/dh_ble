@@ -6,7 +6,7 @@
 */
 #ifndef __NRFDRVRTC_H__
 #define __NRFDRVRTC_H__
-#include "../DhGlobalHead.h"
+#include "../../DhGlobalHead.h"
 
 
 #define SET_RTC_CC_ABSOLUTE					(1)

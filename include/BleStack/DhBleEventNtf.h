@@ -16,6 +16,7 @@ typedef enum
 {
     BLE_EVENT_CONNECTED = 0x0001,
     BLE_EVENT_DISCONNECTED,
+    BLE_EVENT_CONN_UPDATE,
     BLE_EVENT_RECV_WRITE,
     BlE_EVENT_RECV_HVC,                 // handle value confirm 对indication的响应 
 }EnBleEvtType;
@@ -30,16 +31,21 @@ typedef struct
         BlkBleRecvWriteEvent    m_blkWriteInfo;
         BlkBleConnectedEvent    m_blkConnInfo;
         BlkBleDisconnectedEvent m_blkDisconnInfo;
-	}m_blkEventInfo;
+        BlkBleConnUpdateEvent   m_blkConnUpdateInfo;
+	}m_event;
 }BlkBleEvent;
 
-typedef void (*BleEventHandler)(BlkBleEvent *event);
+typedef void (*BleEventHandler)(BlkBleEvent event);
 
 #ifdef __cplusplus
 #if __cplusplus
 extern "C"{
 #endif
 #endif /* __cplusplus */
+
+extern u4 BleEventPush(BlkBleEvent event);
+extern void DhBleEventNtfInit(void);
+extern void DhBleEventHandlerReg(BleEventHandler handler);
 
 
 #ifdef __cplusplus

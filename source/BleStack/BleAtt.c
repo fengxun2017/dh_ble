@@ -635,10 +635,11 @@ static u4 AttReadReqHandle(u1 *pu1Req, u2 len)
 static u4 AttWriteCommandHandle(u1 *pu1Req, u2 len)
 {
     BlkBleAttribute *pblkAtt = NULL;
+    BlkBleEvent bleEvent;
     u2  u2AttHandle = BLE_ATT_INVALID_HANDLE;
     u2  u2ValueLen;
     u1  index = 0;
-
+    
     if( NULL==pu1Req )
     {
         return ERR_ATT_INVALID_PARAMS;
@@ -661,6 +662,13 @@ static u4 AttWriteCommandHandle(u1 *pu1Req, u2 len)
         {
             memcpy(pblkAtt->m_blkAttValue.m_pu1AttValue, pu1Req+index, u2ValueLen);
             pblkAtt->m_blkAttValue.m_u2CurrentLen = u2ValueLen;
+
+            bleEvent.m_u2EvtType = BLE_EVENT_RECV_WRITE;
+            bleEvent.m_event.m_blkWriteInfo.m_u2AttHandle = u2AttHandle;
+            u2ValueLen = u2ValueLen>BLE_ATT_MTU_MAX_SIZE?BLE_ATT_MTU_MAX_SIZE:u2ValueLen;
+            bleEvent.m_event.m_blkWriteInfo.m_u2WriteLen = u2ValueLen;
+            memcpy(bleEvent.m_event.m_blkWriteInfo.m_pu1AttValue, pu1Req+index, u2ValueLen);
+            BleEventPush(bleEvent);
         }                                                                               
     }
     return DH_SUCCESS;
@@ -677,6 +685,7 @@ static u4 AttWriteCommandHandle(u1 *pu1Req, u2 len)
 static u4 AttWriteReqHandle(u1* pu1Req, u2 len)
 {
     BlkBleAttribute *pblkAtt = NULL;
+    BlkBleEvent bleEvent;
     u2  u2AttHandle = BLE_ATT_INVALID_HANDLE;
     u2  u2ValueLen;
     u1  index = 0;
@@ -702,6 +711,13 @@ static u4 AttWriteReqHandle(u1* pu1Req, u2 len)
         {
             memcpy(pblkAtt->m_blkAttValue.m_pu1AttValue, pu1Req+index, u2ValueLen);
             pblkAtt->m_blkAttValue.m_u2CurrentLen = u2ValueLen;
+
+            bleEvent.m_u2EvtType = BLE_EVENT_RECV_WRITE;
+            bleEvent.m_event.m_blkWriteInfo.m_u2AttHandle = u2AttHandle;
+            u2ValueLen = u2ValueLen>BLE_ATT_MTU_MAX_SIZE?BLE_ATT_MTU_MAX_SIZE:u2ValueLen;
+            bleEvent.m_event.m_blkWriteInfo.m_u2WriteLen = u2ValueLen;
+            memcpy(bleEvent.m_event.m_blkWriteInfo.m_pu1AttValue, pu1Req+index, u2ValueLen);
+            BleEventPush(bleEvent);
         }
         else
         {
@@ -717,6 +733,10 @@ static u4 AttWriteReqHandle(u1* pu1Req, u2 len)
 
 static u4 AttIndicationConfirm(void)
 {
+    BlkBleEvent bleEvent;
+
+    bleEvent.m_u2EvtType = BlE_EVENT_RECV_HVC;
+    BleEventPush(bleEvent);
     
 	return DH_SUCCESS;
 }
@@ -785,6 +805,8 @@ u4 BleAttReqHandle( u1 *pu1Data, u2 len )
 	DEBUG_INFO("att rsp err code:%08x",u4Ret);
 	return u4Ret;
 }
+
+
 /**
  *@brief: 		BleAttSendNotify
  *@details:		以notify方式发送属性值数据
@@ -815,9 +837,8 @@ u4 BleAttSendNotify(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
     u2ValueLen = (len>(BLE_ATT_MTU_SIZE-3))?(BLE_ATT_MTU_SIZE-3):len;
     memcpy(pu1Notify+index, pu1AttValue, u2ValueLen);
     index += u2ValueLen;
-    /* 同时也要更新属性值 */
+    /* 先更新属性值再发送 */
     memcpy(pblkAtt->m_blkAttValue.m_pu1AttValue, pu1AttValue, u2ValueLen);
-    
     if( BleL2capDataSend( BLE_L2CAP_ATT_CHANNEL_ID, pu1Notify, index ) != DH_SUCCESS )
     {
         return ERR_ATT_SEND_RSP_FAILED;

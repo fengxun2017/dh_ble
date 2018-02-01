@@ -6,7 +6,7 @@
 */
 #ifndef __RADIODRV_H__
 #define __RADIODRV_H__
-#include "../DhGlobalHead.h"
+#include "../../DhGlobalHead.h"
 
 #define NRF_RADIO_SHORT_DISABLED_TXEN			(1<<2)
 #define NRF_RADIO_SHORT_DISABLED_RXEN			(1<<3)

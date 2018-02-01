@@ -62,10 +62,33 @@ u4 DemoServiceInit(void)
 }
 
 
+static void MyBleEventHandler(BlkBleEvent event)
+{
+    
+    switch(event.m_u2EvtType)
+    {
+        case BLE_EVENT_CONNECTED:
+        break;
+
+        case BLE_EVENT_DISCONNECTED:
+        break;
+
+        case BLE_EVENT_CONN_UPDATE:
+        break;
+
+        case BLE_EVENT_RECV_WRITE:
+        break;
+
+        case BlE_EVENT_RECV_HVC:
+		break;
+    }
+}
+
+
 u4 BleStackInit(void)
 {
     DhBleEventNtfInit();
-    DhBleEventHandlerReg();
+    DhBleEventHandlerReg(MyBleEventHandler);
 	BleLinkInit();
 	
 	return BleGattInfoInit();

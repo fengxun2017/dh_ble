@@ -6,7 +6,12 @@
 */
 #include "../../include/DhGlobalHead.h"
 
+#define SERVER_INITIATE_NOTIFY              0x01
+#define SERVER_INITIATE_INDICATION          0x02
+#define SERVER_NOTIFY_ENABLED               0x0001
+#define SERVER_INDCATION_ENABLE             0x0002
 #define	BLE_GATT_ATT_MAX_COUNT      20
+
 
 /*UUID内存资源池，从这里获取存放uuid的内存 */
 
@@ -402,9 +407,24 @@ u4 BleGattCharacteristicAdd( BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u
     return DH_SUCCESS;
 }
 
-static u1 IsNotifyEnable()
+static u1 IsNotifyEnable(u1 initiateType, u1 *pu1AttValue, u1 len)
 {
-    
+    u2 state;
+    if( 2 != len )
+    {
+        return 0;
+    }
+
+    state = pu1AttValue[0]+pu1AttValue[1]*256;
+    if( SERVER_INITIATE_INDICATION==initiateType && SERVER_INDCATION_ENABLE==state )
+    {
+        return 1;
+    }
+    if( SERVER_INITIATE_NOTIFY==initiateType && SERVER_NOTIFY_ENABLED==state )
+    {
+        return 1;
+    }
+    return 0;
 }
 
 u4 BleGattSendNotify(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
@@ -412,7 +432,6 @@ u4 BleGattSendNotify(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
     /* 检查notify 是否使能了 */
     BlkBleAttribute *pblkAtt;
     BlkBleAttribute *pblkCccd;
-    u1  pu1Cccd[2];
     u2  cccdHandle;
     BleGattFindAttByHandle(u2AttHandle, &pblkAtt);
     
@@ -424,16 +443,48 @@ u4 BleGattSendNotify(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
     BleGattFindAttByHandle(cccdHandle, &pblkCccd);
     if ( NULL == pblkCccd )
     {
-        return ERR_GATT_INVALID_HANDLE;
+        return ERR_GATT_NOT_FIND_CCCD;
     }
-    
-    
-    
-    
-    
+    if( !IsNotifyEnable(SERVER_INITIATE_NOTIFY, pblkCccd->m_blkAttValue.m_pu1AttValue, pblkCccd->m_blkAttValue.m_u2CurrentLen) )
+    {
+        return ERR_GATT_ATT_STATE_INVALID;  // 没有使能notify
+    }
+    if(len > (BLE_ATT_MTU_SIZE-3) )
+    {
+        return ERR_GATT_VALUE_LEN;
+    }
+
+    return BleAttSendNotify(u2AttHandle, pu1AttValue, len);
 }
 
-
+u4 BleGattSendIndication(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
+{
+    /* 检查notify 是否使能了 */
+    BlkBleAttribute *pblkAtt;
+    BlkBleAttribute *pblkCccd;
+    u2  cccdHandle;
+    BleGattFindAttByHandle(u2AttHandle, &pblkAtt);
+    
+    if ( NULL == pblkAtt )
+    {
+        return ERR_GATT_INVALID_HANDLE;
+    }
+    cccdHandle = pblkAtt->m_u2CCCDHandle;
+    BleGattFindAttByHandle(cccdHandle, &pblkCccd);
+    if ( NULL == pblkCccd )
+    {
+        return ERR_GATT_NOT_FIND_CCCD;
+    }
+    if( !IsNotifyEnable(SERVER_INITIATE_INDICATION, pblkCccd->m_blkAttValue.m_pu1AttValue, pblkCccd->m_blkAttValue.m_u2CurrentLen) )
+    {
+        return ERR_GATT_ATT_STATE_INVALID;  // 没有使能notify
+    }
+    if(len > (BLE_ATT_MTU_SIZE-3) )
+    {
+        return ERR_GATT_VALUE_LEN;
+    }
+    return BleAttSendIndication(u2AttHandle, pu1AttValue, len);
+}
 
 
 

@@ -271,6 +271,8 @@ __INLINE static u4 UpdateSeqNum(u1 SN, u1 NESN, u1 crcTrue )
 __INLINE static void UpdateConnParams(void)
 {
     u4  u4SleepTimer;
+    BlkBleEvent bleEvent;
+    
     if( CONN_PARAMS_UPDATING == s_blkConnStateInfo.m_u1ConnNeedUpdataFlag )
     {
         s_blkConnStateInfo.m_u1TransmitWindowSize = s_blkConnStateInfo.m_u1NewTWZ;
@@ -285,7 +287,18 @@ __INLINE static void UpdateConnParams(void)
         
         /* 超时也是先计算好，每个连接事件收到数据包了就刷新，timeout单位为10ms，interval单位是1.25ms。 8倍关系 */
     	s_blkConnStateInfo.m_u2connTimeoutBackup = s_blkConnStateInfo.m_u2ConnSupervisionTimeout*8/s_blkConnStateInfo.m_u2ConnInterval;
-    }
+    	if( s_blkConnStateInfo.m_u2connTimeoutBackup >= 133 )
+    	{
+            /* 按30ms间隔算，4s大概133次间隔， android有的手机给的超时比较离谱，所以超时最大按133次计吧*/
+            s_blkConnStateInfo.m_u2connTimeoutBackup = 133;
+    	}
+    	bleEvent.m_u2EvtType = BLE_EVENT_CONN_UPDATE;
+    	bleEvent.m_event.m_blkConnUpdateInfo.m_u2ConnInterval = s_blkConnStateInfo.m_u2NewCI;
+    	bleEvent.m_event.m_blkConnUpdateInfo.m_u2ConnTimeout = s_blkConnStateInfo.m_u2NewCST;
+    	bleEvent.m_event.m_blkConnUpdateInfo.m_u2SlaveLatency = s_blkConnStateInfo.m_u2NewCSL;
+
+    	BleEventPush(bleEvent);
+	}
 }
 
 /**
@@ -595,7 +608,7 @@ static void PacketRecvTimeout(void *pvalue)
 {
 	u4	u4PassTime;
 	static u4	u4SleepTimer;
-
+    BlkBleEvent bleEvent;
     /* 接收超时关闭radio前先关掉自动切换发送的功能，不然关闭后会自动发送一次 */
     BleAutoToTxDisable();    
 
@@ -644,17 +657,13 @@ static void PacketRecvTimeout(void *pvalue)
 	if ( s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter == 0 )
 	{
 		/* 连接超时了 */
-
 		BleLinkStateSwitch(BLE_LINK_STANDBY);	// 链路状态回到空闲态
 		LinkConnSubStateSwitch(CONN_IDLE);		// 复位连接子状态
         BleLPowerTimerStop(WAIT_PACKET_SLEEP_TIMER);
         BleHAccuracyTimerStop(RECV_PACKET_HA_TIMER);
-		if ( CONN_CONNING_RX != s_blkConnStateInfo.m_enConnSubState )
-		{
-			/*
-				上报断开事件,建立连接过程中超时就不上报了吧。
-			*/
-		}
+        bleEvent.m_u2EvtType = BLE_EVENT_DISCONNECTED;
+        bleEvent.m_event.m_blkDisconnInfo.m_u1ErrCode = 0x08;   // 表示超时断开
+        BleEventPush(bleEvent);
 		return;
 	}
 	
@@ -792,6 +801,8 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 	u4	u4AccAddr;
 	u4  u4SleepTimer;
 	static u4	u4AnchorPoint;		// 主机第一个包发送过来的期望时间
+    BlkBleEvent blkEvent;
+	
 	s_blkConnStateInfo.m_u1PeerAddrType = addrType;
 	memcpy(s_blkConnStateInfo.m_pu1PeerAddr, pu1Addr, BLE_ADDR_LEN);
 
@@ -852,9 +863,22 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
     
     /* 超时也是先计算好，每个连接事件收到数据包了就刷新，timeout单位为10ms，interval单位是1.25ms。 8倍关系 */
 	s_blkConnStateInfo.m_u2connTimeoutBackup = s_blkConnStateInfo.m_u2ConnSupervisionTimeout*8/s_blkConnStateInfo.m_u2ConnInterval;
+	if( s_blkConnStateInfo.m_u2connTimeoutBackup >= 133 )
+	{
+        /* 按30ms间隔算，4s大概133次间隔， android有的手机给的超时比较离谱，所以超时最大按133次计吧*/
+        s_blkConnStateInfo.m_u2connTimeoutBackup = 133;
+	}
 	PrepareNextConnEvent();  // 提前设置好下个连接事件所在的通道
 	DEBUG_INFO("tran offset:%d wind size:%d ,connected:%d",s_blkConnStateInfo.m_u2TransmitWindowOffset,s_blkConnStateInfo.m_u1TransmitWindowSize, u4AnchorPoint);
 
+    /* 通知上层连接 */
+    blkEvent.m_u2EvtType = BLE_EVENT_CONNECTED;
+    blkEvent.m_event.m_blkConnInfo.m_u1PeerBleAddrType = s_blkConnStateInfo.m_u1PeerAddrType;
+    memcpy(blkEvent.m_event.m_blkConnInfo.m_pu1PeerBleAddr, s_blkConnStateInfo.m_pu1PeerAddr, BLE_ADDR_LEN);
+    blkEvent.m_event.m_blkConnInfo.m_u2ConnInterval = s_blkConnStateInfo.m_u2ConnInterval;
+    blkEvent.m_event.m_blkConnInfo.m_u2SlaveLatency = s_blkConnStateInfo.m_u2ConnSlaveLatency;
+    blkEvent.m_event.m_blkConnInfo.m_u2ConnTimeout = s_blkConnStateInfo.m_u2ConnSupervisionTimeout;
+    BleEventPush(blkEvent);
 }
 
 

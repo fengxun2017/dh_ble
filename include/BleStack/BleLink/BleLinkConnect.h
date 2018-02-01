@@ -11,11 +11,18 @@
 typedef struct
 {
     u1  m_u1PeerBleAddrType;
-    u1  m_pu1PeerBleAddr[BLE_ADDR_LEN];
+    u1  m_pu1PeerBleAddr[BLE_ADDR_LEN];     /* 对端设备地址，LSB */
+    u2  m_u2ConnInterval;                   /* 1.25ms为单位 */
+    u2  m_u2SlaveLatency;
+    u2  m_u2ConnTimeout;                    /* 10ms为单位 */
+}BlkBleConnectedEvent;
+
+typedef struct
+{
     u2  m_u2ConnInterval;
     u2  m_u2SlaveLatency;
     u2  m_u2ConnTimeout;
-}BlkBleConnectedEvent;
+}BlkBleConnUpdateEvent;
 
 typedef struct
 {

@@ -21,12 +21,12 @@ extern "C"{
 #endif
 #endif /* __cplusplus */
 
-#include "NrfDrv/system_nrf51.h"
-#include "NrfDrv/nrf51.h"
-#include "NrfDrv/nrf51_bitfields.h"
-#include "NrfDrv/NrfRtcDrv.h"
-#include "NrfDrv/NrfRadioDrv.h"
-#include "NrfDrv/NrfTimerDrv.h"
-#include "NrfDrv/nrf_gpio.h"
-#include "NrfDrv/NrfClockDrv.h"
+#include "./ChipDrv/NrfDrv/system_nrf51.h"
+#include "./ChipDrv/NrfDrv/nrf51.h"
+#include "./ChipDrv/NrfDrv/nrf51_bitfields.h"
+#include "./ChipDrv/NrfDrv/NrfRtcDrv.h"
+#include "./ChipDrv/NrfDrv/NrfRadioDrv.h"
+#include "./ChipDrv/NrfDrv/NrfTimerDrv.h"
+#include "./ChipDrv/NrfDrv/nrf_gpio.h"
+#include "./ChipDrv/NrfDrv/NrfClockDrv.h"
 #endif /* __HARDWAREHEAD_H__ */
