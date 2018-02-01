@@ -10,4 +10,9 @@
 #define DH_IRQ_PRIORITY_2		(2)
 #define DH_IRQ_PRIORITY_3		(3)
 
+#define UART_RX_PIN             (8)
+#define UART_TX_PIN             (9)
+
+#define HARDWARE_NRF51          
+
 #define DEBUG_LOG

@@ -69,7 +69,7 @@ void BLE_EVENT_NTF_IRQ_HANDLER(void)
 			QueuePop(BLE_EVENT_NTF_QUEUE);
 			if( NULL != s_bleEventHandler )
 			{
-			    s_bleEventHandler(bleEvent);
+			    s_bleEventHandler(&bleEvent);
 			}
 		}
 	}while(NULL != pBleEvent );

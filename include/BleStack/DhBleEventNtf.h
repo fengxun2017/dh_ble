@@ -35,7 +35,7 @@ typedef struct
 	}m_event;
 }BlkBleEvent;
 
-typedef void (*BleEventHandler)(BlkBleEvent event);
+typedef void (*BleEventHandler)(BlkBleEvent *event);
 
 #ifdef __cplusplus
 #if __cplusplus

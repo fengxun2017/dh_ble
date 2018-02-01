@@ -29,4 +29,8 @@ extern "C"{
 #include "./ChipDrv/NrfDrv/NrfTimerDrv.h"
 #include "./ChipDrv/NrfDrv/nrf_gpio.h"
 #include "./ChipDrv/NrfDrv/NrfClockDrv.h"
+#include "./ChipDrv/NrfDrv/NrfUart.h"
+
+#include "./ChipDrv/CommDrv/HardwareUart.h"
+
 #endif /* __HARDWAREHEAD_H__ */
