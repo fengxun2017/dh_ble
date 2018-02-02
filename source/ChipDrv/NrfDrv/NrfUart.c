@@ -1,57 +1,57 @@
 #include "../../include/DhGlobalHead.h"
 
-u4  NrfUartBaudGet(EnUartBaudrate baud)
+u4  NrfUartBaudGet(EnUartBaudrate enBaud)
 {
     u4 baud;
     
-    switch(baud)
+    switch(enBaud)
     {
-        case UART_BAUDRATE_BAUDRATE_Baud115200:
+        case UART_BAUDRATE_115200:
             baud = 0x01D7E000;
         break; 
-        case UART_BAUDRATE_BAUDRATE_Baud1200:
+        case UART_BAUDRATE_1200:
             baud = 0x0004F000;
         break;
-        case UART_BAUDRATE_BAUDRATE_Baud14400:
+        case UART_BAUDRATE_14400:
             baud = 0x003B0000;
         break;
-        case UART_BAUDRATE_BAUDRATE_Baud19200:
+        case UART_BAUDRATE_19200:
             baud = 0x004EA000;
         break;
-        case UART_BAUDRATE_BAUDRATE_Baud1M:
+        case UART_BAUDRATE_1M:
             baud = 0x10000000;
         break;
-        case UART_BAUDRATE_BAUDRATE_Baud230400:
+        case UART_BAUDRATE_230400:
             baud = 0x03AFB000;
         break;
-        case UART_BAUDRATE_BAUDRATE_Baud2400:
+        case UART_BAUDRATE_2400:
             baud = 0x0009D000;
         break;
-        case UART_BAUDRATE_BAUDRATE_Baud250000:
+        case UART_BAUDRATE_250000:
             baud = 0x04000000;
         break;
-        case UART_BAUDRATE_BAUDRATE_Baud28800:
+        case UART_BAUDRATE_28800:
             baud = 0x0075F000;
         break;
-        case UART_BAUDRATE_BAUDRATE_Baud38400:
+        case UART_BAUDRATE_38400:
             baud = 0x009D5000;
         break;
-        case UART_BAUDRATE_BAUDRATE_Baud460800:
+        case UART_BAUDRATE_460800:
             baud = 0x075F7000;
         break;
-        case UART_BAUDRATE_BAUDRATE_Baud4800:
+        case UART_BAUDRATE_4800:
             baud = 0x0013B000;
         break;
-        case UART_BAUDRATE_BAUDRATE_Baud57600:
+        case UART_BAUDRATE_57600:
             baud = 0x00EBF000;
         break;
-        case UART_BAUDRATE_BAUDRATE_Baud76800:
+        case UART_BAUDRATE_76800:
             baud = 0x013A9000;
         break;
-        case UART_BAUDRATE_BAUDRATE_Baud921600:
+        case UART_BAUDRATE_921600:
             baud = 0x0EBEDFA4;
         break;
-        case UART_BAUDRATE_BAUDRATE_Baud9600:
+        case UART_BAUDRATE_9600:
             baud = 0x00275000;
         break;
         default:
@@ -80,7 +80,7 @@ void NrfUartSimpleTxByte(u1 byte)
     NRF_UART0->EVENTS_TXDRDY = 0;
     NRF_UART0->TXD = byte;
     NRF_UART0->TASKS_STARTTX = 1;
-    while( 0==NRF_UART0->EVENTS_TXRDY && (count--) )
+    while( 0==NRF_UART0->EVENTS_TXDRDY && (count--) )
     {
     }
 }

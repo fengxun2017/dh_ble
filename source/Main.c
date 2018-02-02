@@ -1,6 +1,6 @@
 #include "../include/DhGlobalHead.h"
 
-#define ADV_INTERVAL_MS     1000
+#define ADV_INTERVAL_MS     200
 
 
 
@@ -20,15 +20,15 @@ u4 AdvertisingStart(void)
 {
 	BlkAdvChannelOn channelOn;
 	
-	channelOn.m_ChannelOn_37 = 0;
+	channelOn.m_ChannelOn_37 = 1;
 	channelOn.m_ChannelOn_38 = 1;
-	channelOn.m_ChannelOn_39 = 0;
+	channelOn.m_ChannelOn_39 = 1;
 	BleAdvStart(channelOn, ADV_INTERVAL_MS);
 	return DH_SUCCESS;
 }
 
-u2 g_u2RxHandle;
-u2 g_u2TxHandle;
+BlkBleAttHandleInfo g_u2RxHandle;
+BlkBleAttHandleInfo g_u2TxHandle;
 
 u4 DemoServiceInit(void)
 {
@@ -43,11 +43,12 @@ u4 DemoServiceInit(void)
 	BleGattServiceDeclAdd(pu1MyServiceUuid, UUID_TYPE_16BIT);
     charCfg.m_BlkCharProps.m_u1ReadEnable = 1;
     charCfg.m_BlkCharProps.m_u1WriteCmdEnable = 1;
+	charCfg.m_BlkCharProps.m_u1IndicateEnable = 1;
     charCfg.m_blkUuid.m_pu1Uuid = pu1CharRxUuid;
     charCfg.m_blkUuid.m_u1UuidType = UUID_TYPE_16BIT;
     charCfg.m_u2ValuePermission = ATT_PERMISSION_READ | ATT_PERMISSION_WRITE;
     BleGattCharacteristicAdd(charCfg, pu1CharRxBuff, sizeof(pu1CharRxBuff), &g_u2RxHandle);
-    DEBUG_INFO("Rx Handle:%02X",g_u2RxHandle);
+    DEBUG_INFO("Rx Handle:%04X    cccd handle:%04x",g_u2RxHandle.m_u2ValueHandle, g_u2RxHandle.m_u2CccdHandle);
 
     charCfg.m_BlkCharProps.m_u1ReadEnable = 1;
     charCfg.m_BlkCharProps.m_u1WriteReqEnable = 1;
@@ -56,7 +57,7 @@ u4 DemoServiceInit(void)
     charCfg.m_blkUuid.m_u1UuidType = UUID_TYPE_16BIT;
     charCfg.m_u2ValuePermission = ATT_PERMISSION_READ | ATT_PERMISSION_WRITE;
     BleGattCharacteristicAdd(charCfg, pu1CharTxBuff, sizeof(pu1CharTxBuff), &g_u2TxHandle);
-    DEBUG_INFO("Rx Handle:%02X",g_u2TxHandle);
+    DEBUG_INFO("Rx Handle:%04X    cccd handle:%04x",g_u2TxHandle.m_u2ValueHandle,g_u2TxHandle.m_u2CccdHandle);
 	
 	return DH_SUCCESS;
 }
@@ -70,7 +71,7 @@ void PrintfConnInfo(BlkBleEvent *event)
     DhPrintf("  peer addr type:%d   addr:",event->m_event.m_blkConnInfo.m_u1PeerBleAddrType);
     for( i = 0; i < BLE_ADDR_LEN; i++ )
     {
-        DhPrintf("%02x ",event->m_event.m_blkConnInfo.m_pu1PeerBleAddr[i])
+        DhPrintf("%02x ",event->m_event.m_blkConnInfo.m_pu1PeerBleAddr[i]);
     }
     DhPrintf("\r\n");
     DhPrintf("  interval:%d\r\n",event->m_event.m_blkConnInfo.m_u2ConnInterval);
@@ -80,7 +81,7 @@ void PrintfConnInfo(BlkBleEvent *event)
 
 void PrintfDisconnInfo(BlkBleEvent *event)
 {
-    DhPrintf("Disconnected  reason: %02x\r\n", event->m_event.m_blkDisconnInfo.m_u1ErrCode)
+    DhPrintf("Disconnected  reason: %02x\r\n", event->m_event.m_blkDisconnInfo.m_u1ErrCode);
 }
 
 void PrintfConnUpdateInfo(BlkBleEvent *event)
@@ -98,7 +99,7 @@ void PrintfWriteInfo(BlkBleEvent *event)
     DhPrintf(" handle :%04x   receive data:",event->m_event.m_blkWriteInfo.m_u2AttHandle);
     for( i = 0; i < event->m_event.m_blkWriteInfo.m_u2WriteLen; i++)
     {
-        DhPrintf("%02d ",event->m_event.m_blkWriteInfo.m_pu1AttValue[i]);
+        DhPrintf("%02x ",event->m_event.m_blkWriteInfo.m_pu1AttValue[i]);
     }
     DhPrintf("\r\n");
     
@@ -107,7 +108,7 @@ void PrintfWriteInfo(BlkBleEvent *event)
 void MyBleEventHandler(BlkBleEvent *event)
 {
     
-    switch(event.m_u2EvtType)
+    switch(event->m_u2EvtType)
     {
         case BLE_EVENT_CONNECTED:
             PrintfConnInfo(event);
@@ -115,6 +116,7 @@ void MyBleEventHandler(BlkBleEvent *event)
 
         case BLE_EVENT_DISCONNECTED:
             PrintfDisconnInfo(event);
+            AdvertisingStart(); // 重新广播
         break;
 
         case BLE_EVENT_CONN_UPDATE:
@@ -143,7 +145,7 @@ u4 BleStackInit(void)
 
 void UartInit()
 {
-	HwUartSimpleInit(UART_TX_PIN, UART_RX_PIN, UART_BAUDRATE_BAUDRATE_Baud115200);
+	HwUartSimpleInit(UART_TX_PIN, UART_RX_PIN, UART_BAUDRATE_115200);
 }
 void LowPower(void)
 {
@@ -154,14 +156,13 @@ void LowPower(void)
 int main(void)
 {
 	BlkBleAddrInfo	addr;
-	
+	u1 testSend[20] = {0x11,0x22,0x44};
 	addr.m_u1AddrType = 0;
-	addr.m_pu1Addr[0] = 0x05;addr.m_pu1Addr[1] = 0x02;addr.m_pu1Addr[2] = 0x03;
+	addr.m_pu1Addr[0] = 0x11;addr.m_pu1Addr[1] = 0x02;addr.m_pu1Addr[2] = 0x03;
 	addr.m_pu1Addr[3] = 0x04;addr.m_pu1Addr[4] = 0x05;addr.m_pu1Addr[5] = 0x06;
-
+    UartInit();	//开串口会有1ma的电流
 	DEBUG_INFO("start");
     BleStackInit();
-    UartInit();
 
 	
     /* 名字和地址要在广播数据设置之前设置好 */
@@ -171,10 +172,21 @@ int main(void)
     BleAdvDataInit();
     DemoServiceInit();
     AdvertisingStart();
-    
+    nrf_gpio_cfg_input(20, NRF_GPIO_PIN_PULLUP);
+    nrf_gpio_cfg_input(19, NRF_GPIO_PIN_PULLUP);
 	while(1)
 	{
         LowPower();
+		if(nrf_gpio_pin_read(20) == 0 ) // 连接后每个连接都会唤醒，可以检测按键，测试线这样吧
+		{
+            BleGattSendNotify(g_u2TxHandle.m_u2ValueHandle, testSend, 20);
+            while(nrf_gpio_pin_read(20)==0);
+		}
+		if(nrf_gpio_pin_read(19) == 0 ) // 连接后每个连接都会唤醒，可以检测按键，测试线这样吧
+		{
+            BleGattSendIndication(g_u2RxHandle.m_u2ValueHandle, testSend, 20);
+            while(nrf_gpio_pin_read(19)==0);
+		}
 	}
 	return 0;
 }

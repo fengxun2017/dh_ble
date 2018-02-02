@@ -22,6 +22,12 @@
 #define BLE_RECONNECTION_ADDRESS_UUID			0x2A03
 #define BLE_SERVICE_CHANGED_UUID				0x2A05
 
+/* 返回特性句柄相关的信息，包括特性值的句柄，描述符的句柄 */
+typedef struct 
+{
+    u2  m_u2ValueHandle;    /* 特性值句柄 */
+    u2  m_u2CccdHandle;     /* Client Characteristic Configuration 句柄 */
+}BlkBleAttHandleInfo;
 
 typedef struct
 {
@@ -63,8 +69,10 @@ extern u4	BleGattFindAttByHandle(u2 u2Handle, BlkBleAttribute **ppblkAtt);
 extern u4 BleGattFindAttByType(u2 u2StartHandle, u2 u2EndHandle, u1 *pu1UUID, u1 UUIDType, BlkBleAttribute **ppblkAtt);
 extern u4	BleGattInfoInit(void);
 extern u4 BleGattServiceDeclAdd(u1 *pu1ServiceUuid, u1 uuidType);
-extern u4 BleGattCharacteristicAdd(BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u2BuffSize, u2 *pu2ValueHandle );
+extern u4 BleGattCharacteristicAdd( BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u2BuffSize, BlkBleAttHandleInfo *pu2ValueHandle );
 extern u2 BleDeviceNameAttHandleGet(void);
+extern u4 BleGattSendNotify(u2 u2AttHandle, u1 *pu1AttValue, u2 len);
+extern u4 BleGattSendIndication(u2 u2AttHandle, u1 *pu1AttValue, u2 len);
 
 
 #ifdef __cplusplus

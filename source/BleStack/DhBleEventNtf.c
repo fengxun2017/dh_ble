@@ -46,7 +46,7 @@ u4 BleEventPush(BlkBleEvent event)
 	}
 	*pBlkEvent = event;
 
-	/* 触发中断,执行后续通知上层动作   */
+	/* 触发中断,执行后通知上层动作   */
 	NVIC_SetPendingIRQ(BLE_EVENT_NTF_IRQ);
 
 	return DH_SUCCESS;

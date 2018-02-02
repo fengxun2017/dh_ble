@@ -28,16 +28,37 @@ void HwUartSimpleTxData(u1 *pu1Data, u2 len)
 }
 
 
-void DhPrintf(const char *fmt,...)
+/* 带换行的打印*/
+void DhPrintfLineFeed(const char *fmt,...)
 {
-    u2  index;
     u2  outLen;
-    u1  buffer[1024];
+    u1  buff[1024];
     va_list args;
     
     va_start(args,fmt);
-    outLen = vsnprintf(buffer, sizeof(buff), fmt, args);
-    va_end(args);
+    outLen = vsnprintf((char *)buff, sizeof(buff), fmt, args);
+	if ( outLen < (sizeof(buff)-2) )
+	{
+		buff[outLen] = '\r';
+		buff[outLen+1] = '\n';
+	}
+	outLen += 2;
+	va_end(args);
 
-    HwUartSimpleTxData(buffer[i], outLen);
+    HwUartSimpleTxData(buff, outLen);
+	
+}
+
+void DhPrintf(const char *fmt,...)
+{
+    u2  outLen;
+    u1  buff[1024];
+    va_list args;
+    
+    va_start(args,fmt);
+    outLen = vsnprintf((char *)buff, sizeof(buff), fmt, args);
+	va_end(args);
+
+    HwUartSimpleTxData(buff, outLen);
+	
 }

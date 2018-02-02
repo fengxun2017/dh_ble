@@ -28,7 +28,7 @@
 
 #define BLE_CONN_SUB_STATE_RX_MASK				(0x02)
 
-#define BLE_LISTEN_EXTEND_WIND                  (500)       /* 经验值，实测可能因为代码执行的耗时影响接收时间点，这里加额外监听时间*/
+#define BLE_LISTEN_EXTEND_WIND                  (800)       /* 经验值，实测可能因为代码执行的耗时影响接收时间点，这里加额外监听时间*/
 /*
 	连接请求中的LLDATA内容:
 	AA			CRCInit		WinSize		WinOffset	Interval	Latency		Timeout		ChM			Hop			SCA
@@ -893,23 +893,13 @@ void LinkConnStateInit(u1 sca)
 	BleLinkStateHandlerReg(BLE_LINK_CONNECTED, LinkConnRadioEvtHandler);
 }
 
-void LinkConnDataHandle()
+void LinkConnStateReset(void)
 {
-	/*
-		规范要求:4.5.1 Connection Events
-The slave shall always send a packet if it receives a
-packet from the master regardless of a valid CRC match, except after multiple
-consecutive invalid CRC matches as specified in Section 4.5.6.		
-	*/
-
-	/*
-		4.5.7
-slave is required to re-synchronize to the master’s anchor point at each connection
-event where it listens for the master
-If the slave receives a packet from the
-master regardless of a CRC match, the slave shall update its anchor point.
-	*/
+    BleLPowerTimerStop(BLE_LP_TIMER0);
+    BleHAccuracyTimerStop(BLE_HA_TIMER0);
+    LinkConnSubStateSwitch(CONN_IDLE);
 }
+
 
 
 

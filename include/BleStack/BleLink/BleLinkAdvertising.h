@@ -32,6 +32,8 @@ extern u4 LinkAdvDataCfg(u1 *pu1Data, u2 u2Offset, u2	len);
 extern void LinkAdvParamsCfg(BlkAdvChannelOn channels, u2 intervalMs);
 extern u4 LinkAdvStart(void);
 extern void LinkAdvStateInit(void);
+extern void LinkAdvStateReset(void);
+
 extern u4	LinkScanRspCfg(u1 *pu1Data, u2 u2Offset, u2	len);
 extern u2 LinkScanRspLenGet(void);
 extern u2 LinkAdvDataLenGet(void);

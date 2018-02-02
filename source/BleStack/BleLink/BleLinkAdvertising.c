@@ -6,7 +6,7 @@
 */
 #include "../../include/DhGlobalHead.h"
 
-#define nBLE_LINK_ADV_DEBUG
+#define     nBLE_LINK_ADV_DEBUG
 
 #if !defined(BLE_LINK_ADV_DEBUG)
 #undef DEBUG_INFO
@@ -289,6 +289,7 @@ __INLINE static void HandleAdvRxDone(void)
 		{
 		
 			BleLPowerTimerStop(BLE_LP_TIMER0);	
+			LinkAdvSubStateSwitch(ADV_IDLE);
 			LinkConnReqHandle(TxAddType, pu1Rx+2, pu1Rx+14);
 			DEBUG_INFO("connect req!!!");
 		}
@@ -440,6 +441,12 @@ void LinkAdvStateInit(void)
 	BleLinkStateHandlerReg(BLE_LINK_ADVERTISING, LinkAdvRadioEvtHandler);
 }
 
+void LinkAdvStateReset(void)
+{
+    BleLPowerTimerStop(BLE_LP_TIMER0);
+    BleHAccuracyTimerStop(BLE_HA_TIMER0);
+    s_blkAdvStateInfo.m_enAdvSubState = ADV_IDLE;
+}
 
 /**
  *@brief: 		LinkAdvStart

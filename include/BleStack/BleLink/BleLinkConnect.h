@@ -39,6 +39,7 @@ extern "C"{
 
 extern void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData);
 extern void LinkConnStateInit(u1 sca);
+void LinkConnStateReset(void);
 
 #ifdef __cplusplus
 #if __cplusplus

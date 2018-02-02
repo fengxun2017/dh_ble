@@ -204,6 +204,7 @@ static u4 LinkTerminateHandle(u1 *pu1Data, u2 len)
     {
         return ERR_LINK_INVALID_PARAMS;
     }
+    BleLinkReset();
     reason = pu1Data[0];
     bleEvt.m_u2EvtType = BLE_EVENT_DISCONNECTED;
     bleEvt.m_event.m_blkDisconnInfo.m_u1ErrCode = reason;

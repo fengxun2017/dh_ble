@@ -6,6 +6,15 @@
 */
 #include "../../include/DhGlobalHead.h"
 
+#define nBLE_ATT_DEBUG
+
+#if !defined(BLE_ATT_DEBUG)
+#undef DEBUG_INFO
+#define DEBUG_INFO(...)
+#undef DEBUG_DATA
+#define DEBUG_DATA(...)
+#endif
+
 /*
 	Requests—PDUs sent to a server by a client, and invoke responses
 		If a server receives a request that it does not support, then the server shall
@@ -869,7 +878,7 @@ u4 BleAttSendIndication(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
     {
         return ERR_ATT_INVALID_PARAMS;
     }
-    pu1Indication[index++] = ATT_OPCODE_NOTIFY;
+    pu1Indication[index++] = ATT_OPCODE_INDICATION;
     pu1Indication[index++] = u2AttHandle&0xff;
     pu1Indication[index++] = (u2AttHandle>>8)&0xff;
     BleGattFindAttByHandle(u2AttHandle, &pblkAtt);

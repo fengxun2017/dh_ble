@@ -69,6 +69,8 @@ extern "C"{
 #endif /* __cplusplus */
 
 extern void BleLinkInit(void);
+extern void BleLinkReset(void);
+
 extern void BleLinkStateHandlerReg(EnBleLinkState state, BleRadioEvtHandler evtHandler);
 extern void BleLinkStateSwitch(EnBleLinkState state);
 extern u4 BleHostDataToLinkPop(BlkHostToLinkData *pblkData);

@@ -63,20 +63,36 @@ if(!initialized) {
 void DebugData(u1 *pData, u2 len)
 {
 	u2 i;
+#if defined(DEBUG_LOG_USE_RTT)
 	for( i = 0; i < len; i++)
 	{
 		SEGGER_RTT_printf(0,"%02x ",pData[i]);
 	}
 	SEGGER_RTT_printf(0,"\r\n");
+#elif defined(DEBUG_LOG_USE_UART)
+	for( i = 0; i < len; i++)
+	{
+		DhPrintf("%02x ",pData[i]);
+	}
+	DhPrintf("\r\n");
+#endif
 }
 
 void DebugAscii(u1 *pData, u2 len)
 {
 	u2 i;
+#if defined(DEBUG_LOG_USE_RTT)
 	for( i = 0; i < len; i++)
 	{
 		SEGGER_RTT_printf(0,"%c",pData[i]);
 	}
 	SEGGER_RTT_printf(0,"\r\n");
+#elif defined(DEBUG_LOG_USE_UART)
+	for( i = 0; i < len; i++)
+	{
+		DhPrintf("%c",pData[i]);
+	}
+	DhPrintf("\r\n");
+#endif	
 }
 #endif

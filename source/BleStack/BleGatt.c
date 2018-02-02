@@ -22,7 +22,7 @@ typedef struct
     u2	m_u1AttMaxCount;                      /* 最大允许存在的属性 */
     u2	m_u2AttCount;                         /* 当前属性个数 */
     BlkBleAttribute	*m_pblkBleServiceSets;    /* 当前属性数据库*/
-    u2  m_u2DevNameHandle;                    /* 设备名句柄 */
+    BlkBleAttHandleInfo  m_u2DevNameHandle;                    /* 设备名句柄 */
 } BlkBleGattInfo;
 
 static BlkBleGattInfo s_blkBleGattInfo;
@@ -107,31 +107,31 @@ static u1 CharPropsGet( BlkCharProperties CharProps )
     {
         u1Props |= ATT_PROPERTIES_BROADCAST;
     }
-    else if( CharProps.m_u1ReadEnable )
+    if( CharProps.m_u1ReadEnable )
     {
         u1Props |= ATT_PROPERTIES_READ;
     }
-    else if( CharProps.m_u1WriteCmdEnable )
+    if( CharProps.m_u1WriteCmdEnable )
     {
         u1Props |= ATT_PROPERTIES_WRITE_WITHOUT_RSP;
     }
-    else if( CharProps.m_u1WriteReqEnable )
+    if( CharProps.m_u1WriteReqEnable )
     {
         u1Props |= ATT_PROPERTIES_WRITE;
     }
-    else if( CharProps.m_u1NotifyEnable )
+    if( CharProps.m_u1NotifyEnable )
     {
         u1Props |= ATT_PROPERTIES_NOTIFY;
     }
-    else if( CharProps.m_u1IndicateEnable )
+    if( CharProps.m_u1IndicateEnable )
     {
         u1Props |= ATT_PROPERTIES_INDICATE;
     }
-    else if( CharProps.m_u1SignedWriteEnable )
+    if( CharProps.m_u1SignedWriteEnable )
     {
         u1Props |= ATT_PROPERTIES_AUTH_SIGN_WRITE;
     }
-    else if( CharProps.m_u1ExtendedProps )
+    if( CharProps.m_u1ExtendedProps )
     {
         u1Props |= ATT_PROPERTIES_EXTEND_PEOPERTIES;
     }
@@ -154,7 +154,7 @@ u4	BleGattInfoInit( void )
     s_blkBleGattInfo.m_u2AttCount = 0;
     s_blkBleGattInfo.m_u1AttMaxCount = BLE_GATT_ATT_MAX_COUNT;
     s_blkBleGattInfo.m_pblkBleServiceSets = BleServiceSets;
-    s_blkBleGattInfo.m_u2DevNameHandle = BLE_ATT_INVALID_HANDLE;
+    s_blkBleGattInfo.m_u2DevNameHandle.m_u2ValueHandle = BLE_ATT_INVALID_HANDLE;
 
     /* 添加gap服务 */
     pu1Uuid[0] = BLE_GENERIC_ACCESS_SERVICE_UUID&0xff;
@@ -182,7 +182,7 @@ u4	BleGattInfoInit( void )
 
 u2 BleDeviceNameAttHandleGet(void)
 {
-    return s_blkBleGattInfo.m_u2DevNameHandle;
+    return s_blkBleGattInfo.m_u2DevNameHandle.m_u2ValueHandle;
 }
 /**
  *@brief: 		BleGattFindAttByHandle
@@ -295,7 +295,7 @@ u4 BleGattServiceDeclAdd( u1 *pu1ServiceUuid, u1 uuidType )
     return DH_SUCCESS;
 }
 
-u4 BleGattCharacteristicAdd( BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u2BuffSize, u2 *pu2ValueHandle )
+u4 BleGattCharacteristicAdd( BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u2BuffSize, BlkBleAttHandleInfo *pu2ValueHandle )
 {
 
     u2 currCount;
@@ -372,7 +372,7 @@ u4 BleGattCharacteristicAdd( BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u
     
     if( NULL != pu2ValueHandle )
     {
-        *pu2ValueHandle = (currCount+1);	// handle的值为数组下标+1，因为0x0000是无效的handle
+        pu2ValueHandle->m_u2ValueHandle = (currCount+1);	// handle的值为数组下标+1，因为0x0000是无效的handle
     }
     index = 0;
     if ( charaCfg.m_BlkCharProps.m_u1NotifyEnable || charaCfg.m_BlkCharProps.m_u1IndicateEnable  )
@@ -399,7 +399,7 @@ u4 BleGattCharacteristicAdd( BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u
         pblkCurrAtt->m_blkAttValue.m_pu1AttValue = pu1AttValue;
         pblkCurrAtt->m_u2AttPermission = charaCfg.m_u2CCCDPermission;
         pblkAttValue->m_u2CCCDHandle = currCount+1;     // handle值为数组下标+1
-        
+        pu2ValueHandle->m_u2CccdHandle = currCount+1;   // 返回cccd句柄
     }
     currCount++;
     s_blkBleGattInfo.m_u2AttCount = currCount;
@@ -439,6 +439,10 @@ u4 BleGattSendNotify(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
     {
         return ERR_GATT_INVALID_HANDLE;
     }
+    if(len > (BLE_ATT_MTU_SIZE-3) )
+    {
+        return ERR_GATT_VALUE_LEN;
+    }    
     cccdHandle = pblkAtt->m_u2CCCDHandle;
     BleGattFindAttByHandle(cccdHandle, &pblkCccd);
     if ( NULL == pblkCccd )
@@ -448,10 +452,6 @@ u4 BleGattSendNotify(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
     if( !IsNotifyEnable(SERVER_INITIATE_NOTIFY, pblkCccd->m_blkAttValue.m_pu1AttValue, pblkCccd->m_blkAttValue.m_u2CurrentLen) )
     {
         return ERR_GATT_ATT_STATE_INVALID;  // 没有使能notify
-    }
-    if(len > (BLE_ATT_MTU_SIZE-3) )
-    {
-        return ERR_GATT_VALUE_LEN;
     }
 
     return BleAttSendNotify(u2AttHandle, pu1AttValue, len);
@@ -469,6 +469,10 @@ u4 BleGattSendIndication(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
     {
         return ERR_GATT_INVALID_HANDLE;
     }
+    if(len > (BLE_ATT_MTU_SIZE-3) )
+    {
+        return ERR_GATT_VALUE_LEN;
+    }
     cccdHandle = pblkAtt->m_u2CCCDHandle;
     BleGattFindAttByHandle(cccdHandle, &pblkCccd);
     if ( NULL == pblkCccd )
@@ -479,10 +483,7 @@ u4 BleGattSendIndication(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
     {
         return ERR_GATT_ATT_STATE_INVALID;  // 没有使能notify
     }
-    if(len > (BLE_ATT_MTU_SIZE-3) )
-    {
-        return ERR_GATT_VALUE_LEN;
-    }
+
     return BleAttSendIndication(u2AttHandle, pu1AttValue, len);
 }
 

@@ -53,7 +53,7 @@ static void LinkRadioEvtHandler(EnBleRadioEvt evt)
 	switch(evt)
 	{
 		case BLE_RADIO_EVT_TRANS_DONE:
-		if( NULL != s_blkLinkInfo.m_bleRadioEvtHandler[state])
+		if( NULL!=s_blkLinkInfo.m_bleRadioEvtHandler[state] && BLE_LINK_STANDBY!=state )
 		{
 			s_blkLinkInfo.m_bleRadioEvtHandler[state](evt);			// 调用当前链路状态的ble radio事件处理函数
 		}
@@ -90,6 +90,21 @@ void BleLinkInit(void)
 	NVIC_SetPriority(BLE_STACK_SOFTIRQ, DH_IRQ_PRIORITY_3);
 	NVIC_EnableIRQ(BLE_STACK_SOFTIRQ);
 	
+}
+
+
+/**
+ *@brief: 		BleLinkReset
+ *@details:		复位链路状态
+
+ *@retval:		void
+ */
+void BleLinkReset(void)
+{
+    /* 关闭协议栈的定时器 */
+    LinkAdvStateReset();
+    LinkConnStateReset();
+    BleLinkStateSwitch(BLE_LINK_STANDBY);
 }
 
 /**
@@ -129,7 +144,11 @@ void BleLinkStateSwitch(EnBleLinkState state)
 u4 BleHostDataToLinkPush(BlkHostToLinkData blkData)
 {
 	BlkHostToLinkData *pblkData;
-	
+
+	if( BLE_LINK_CONNECTED != s_blkLinkInfo.m_enState )
+	{
+        return ERR_LINK_STATE_INVALID;
+	}
 	pblkData = (BlkHostToLinkData *)QueueEmptyElemGet(BLE_HOST_TO_LINK_DATA_QUEUE, sizeof(BlkHostToLinkData));
 	if( NULL == pblkData )
 	{

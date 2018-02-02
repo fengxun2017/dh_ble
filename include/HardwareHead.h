@@ -21,6 +21,9 @@ extern "C"{
 #endif
 #endif /* __cplusplus */
 
+#include "./ChipDrv/CommDrv/HardwareUart.h"
+
+
 #include "./ChipDrv/NrfDrv/system_nrf51.h"
 #include "./ChipDrv/NrfDrv/nrf51.h"
 #include "./ChipDrv/NrfDrv/nrf51_bitfields.h"
@@ -31,6 +34,5 @@ extern "C"{
 #include "./ChipDrv/NrfDrv/NrfClockDrv.h"
 #include "./ChipDrv/NrfDrv/NrfUart.h"
 
-#include "./ChipDrv/CommDrv/HardwareUart.h"
 
 #endif /* __HARDWAREHEAD_H__ */
