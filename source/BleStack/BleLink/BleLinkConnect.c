@@ -174,6 +174,7 @@ SN,NESN: 响应机制。 收到的NESN是告诉自己对方有没有收到前一
 	                                                经验值来设置下次唤醒的时间*/                    
 	                                            
 	EnConnSubState		m_enConnSubState;		/* 连接态子状态 */
+	BlkHostToLinkData   m_blkNextTxData;        /* 提前设置好下一次要发送的数据 */
 	
 }BlkConnStateInfo;
 
@@ -188,8 +189,29 @@ static u2	SCA_TO_PPM[BLE_SCA_GRADE_NUMBER] = {500, 250, 150, 100, 75, 50, 30, 20
 BlkConnStateInfo s_blkConnStateInfo;
 static void PacketRecvTimeout(void *pvalue);
 
+/**
+ *@brief: 		BleTxBuffInit
+ *@details:		初始化发送缓存为空包
 
+ *@retval:		void
+ */
+static void BleTxBuffInit(void)
+{
+  memset(LINK_CONN_STATE_TX_BUFF, 0x00,sizeof(LINK_CONN_STATE_TX_BUFF));
+  LINK_CONN_STATE_TX_BUFF[0] = 0x05;
+}
 
+/**
+ *@brief: 		BleTxBuffInit
+ *@details:		初始化下次要发送的数据包为空包
+
+ *@retval:		void
+ */
+static void BleNextTxDataInit()
+{
+    s_blkConnStateInfo.m_blkNextTxData.m_u1Length = 0;
+    s_blkConnStateInfo.m_blkNextTxData.m_u1PacketFlag = DATA_PACKET;
+}
 __INLINE static void LinkConnSubStateSwitch(EnConnSubState enConnSubState)
 {
 	s_blkConnStateInfo.m_enConnSubState = enConnSubState;
@@ -522,7 +544,7 @@ __INLINE static void BleLinkDataHandle(void)
  
  *@retval:		void
  */
-static void ConnStateRxPacketHandler(void *pValue)
+static void ConnStatePrepareRxPacket(void *pValue)
 {
 	u1	u1DataChannel;
 	u4	u4PassTime;
@@ -640,7 +662,7 @@ static void PacketRecvTimeout(void *pvalue)
 	u4SleepTimer = s_blkConnStateInfo.m_u2ConnInterval*1250;
 	/* 需要减去之前监听窗口的时间 */
 	u4SleepTimer -=  u4PassTime;
-	BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStateRxPacketHandler, &u4SleepTimer);
+	BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStatePrepareRxPacket, &u4SleepTimer);
 
 
 	/*超时关闭radio*/
@@ -685,7 +707,7 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 	u4  ret;
 	u1  crcTrue = 1;
 	static u4	u4SleepTimer;
-	static BlkHostToLinkData blkHostData = {0x00,DATA_PACKET,0x00}; //初值设置为空包
+	BlkHostToLinkData *blkHostData = &(s_blkConnStateInfo.m_blkNextTxData);
 
 	if( BLE_RADIO_EVT_TRANS_DONE == evt )	/* 发送完成或接收完成*/
 	{
@@ -709,7 +731,7 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 				启动下次连接事件的睡眠定时器
 			*/
 			u4SleepTimer = s_blkConnStateInfo.m_u4SleepTimer;
-			BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStateRxPacketHandler, &u4SleepTimer);
+			BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4SleepTimer, ConnStatePrepareRxPacket, &u4SleepTimer);
             
 			ExtractRecvPacketSn(&peerSN, &peerNESN);
 			ret = UpdateSeqNum(peerSN, peerNESN, crcTrue);
@@ -734,7 +756,7 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
     			/*
                     有数据发送，没数据回空包
     			*/
-    			LinkSendData(blkHostData.m_u1PacketFlag, blkHostData.m_pu1HostData, blkHostData.m_u1Length);
+    			LinkSendData(blkHostData->m_u1PacketFlag, blkHostData->m_pu1HostData, blkHostData->m_u1Length);
 			}
 
             LinkConnSubStateSwitch(CONN_CONNECTED_TX); // 收到数据包则需要回复数据，切换到发送子状态
@@ -751,13 +773,13 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 			DEBUG_INFO("recved packet:%d,next anchor point:%d",rtcValue,u4SleepTimer);
 
 			/* 先设置好下次要发送的数据 */
-			if( DH_SUCCESS == BleHostDataToLinkPop(&blkHostData) )
+			if( DH_SUCCESS == BleHostDataToLinkPop(blkHostData) )
 			{
 			}
-			else
+			else    /* 没有要发送的数据，设置为空包 */
 			{
-				blkHostData.m_u1Length = 0;
-				blkHostData.m_u1PacketFlag = DATA_PACKET;
+				blkHostData->m_u1Length = 0;
+				blkHostData->m_u1PacketFlag = DATA_PACKET;
 			}	
 		}
 		else if ( CONN_CONNECTED_TX == s_blkConnStateInfo.m_enConnSubState )
@@ -820,7 +842,7 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 	u4AnchorPoint = FIXED_1_25_MS +s_blkConnStateInfo.m_u2TransmitWindowOffset*1250-WIN_WIDEN_ADDITIONAL-SLEEP_INSTANTANEOUS_DEVIATE_TIME-PACKET_EXTEND_WINDOW-BLE_LISTEN_EXTEND_WIND;
 	/* u4AnchorPoint 还要减去这段时间由于rtc时钟源精度造成的误差，提前唤醒 */
 	u4AnchorPoint = u4AnchorPoint-GetTimerDeviation(u4AnchorPoint, s_blkConnStateInfo.m_u1PeerSCA, s_blkConnStateInfo.m_u1SelfSCA);
-	BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4AnchorPoint, ConnStateRxPacketHandler, &u4AnchorPoint);
+	BleLPowerTimerStart(WAIT_PACKET_SLEEP_TIMER, u4AnchorPoint, ConnStatePrepareRxPacket, &u4AnchorPoint);
 	
 	s_blkConnStateInfo.m_u2ConnInterval = pu1LLData[LLDATA_INTERVAL_POS]+((pu1LLData[LLDATA_INTERVAL_POS+1]<<8)&0xFF00);
 	s_blkConnStateInfo.m_u2ConnSlaveLatency = pu1LLData[LLDATA_LATENCY_POS]+((pu1LLData[LLDATA_LATENCY_POS+1]<<8)&0xFF00);
@@ -840,9 +862,10 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 
     s_blkConnStateInfo.m_u1ChannelMapNeedUpdateFlag = CHANNEL_MAP_UPDATED;
     s_blkConnStateInfo.m_u1ConnNeedUpdataFlag = CONN_PARAMS_UPDATED;
-	BleLinkStateSwitch(BLE_LINK_CONNECTED);	// 链路状态切换到连接态。
+	BleLinkStateSwitch(BLE_LINK_CONNECTED);	    // 链路状态切换到连接态。
 	LinkConnSubStateSwitch(CONN_CONNING_RX);	// 切换连接连接子状态到连接中状态。
-	
+	BleTxBuffInit();                            // 初始化发送buff
+	BleNextTxDataInit();                        // 初始化下次要发送的包为空包
 	/* 设置连接过程中的CRC计算初值*/
 	u4CrcIV = pu1LLData[LLDATA_CRCINIT_POS] + ((pu1LLData[LLDATA_CRCINIT_POS+1]<<8)&0xFF00) + ((pu1LLData[LLDATA_CRCINIT_POS+2]<<16)&0xFF0000);
 	BleRadioCrcInit(u4CrcIV);
