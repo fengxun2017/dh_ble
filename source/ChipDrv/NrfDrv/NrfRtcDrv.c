@@ -1,10 +1,29 @@
-/**
- * @file			NrfDrvRtc.c
- * @brief			nrf 的rtc驱动文件,提供nrf芯片底层RTC操作接口，只提供机制，不提供策略.即提供各种细化底层操作，上层
- 					通过调用多个接口实现功能。
- * @author			fengxun
- * @date			2017年10月31日
+/*
+* (The MIT License)
+
+* Copyright (c) 2018 Feng Xun
+
+* Permission is hereby granted, free of charge, to any person obtaining
+* a copy of this software and associated documentation files (the
+* 'Software'), to deal in the Software without restriction, including
+* without limitation the rights to use, copy, modify, merge, publish,
+* distribute, sublicense, and/or sell copies of the Software, and to
+* permit persons to whom the Software is furnished to do so, subject to
+* the following conditions:
+
+* The above copyright notice and this permission notice shall be
+* included in all copies or substantial portions of the Software.
+
+* THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*
 */
+
 #include "../../include/DhGlobalHead.h"
 
 

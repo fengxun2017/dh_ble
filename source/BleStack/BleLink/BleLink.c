@@ -1,11 +1,36 @@
+/*
+* (The MIT License)
+
+* Copyright (c) 2018 Feng Xun
+
+* Permission is hereby granted, free of charge, to any person obtaining
+* a copy of this software and associated documentation files (the
+* 'Software'), to deal in the Software without restriction, including
+* without limitation the rights to use, copy, modify, merge, publish,
+* distribute, sublicense, and/or sell copies of the Software, and to
+* permit persons to whom the Software is furnished to do so, subject to
+* the following conditions:
+
+* The above copyright notice and this permission notice shall be
+* included in all copies or substantial portions of the Software.
+
+* THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*
+*/
+
+
 /**
  * @file				BleLink.c
  * @brief			ble链路层状态机，Ble链路层分为广播态，连接中状态，连接上状态，空闲待命状态。
  					每个状态下又细分字状态。如广播态分：发送结束，接收结束，发送扫描响应结束，广播空闲。
  					协议栈的底层处理分为2部分处理，时序相关的在中断中，剩下的为下半部放到软中断中处理
  					
- * @author			fengxun
- * @date			2017年11月21日
 */
 #include "../../include/DhGlobalHead.h"
 

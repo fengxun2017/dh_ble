@@ -1,10 +1,30 @@
-/**
- * @file				DhError.h
- * @brief			错误宏相关定义
- * @author			fengxun
- * @date			2017年12月6日
-*/
+/*
+* (The MIT License)
 
+* Copyright (c) 2018 Feng Xun
+
+* Permission is hereby granted, free of charge, to any person obtaining
+* a copy of this software and associated documentation files (the
+* 'Software'), to deal in the Software without restriction, including
+* without limitation the rights to use, copy, modify, merge, publish,
+* distribute, sublicense, and/or sell copies of the Software, and to
+* permit persons to whom the Software is furnished to do so, subject to
+* the following conditions:
+
+* The above copyright notice and this permission notice shall be
+* included in all copies or substantial portions of the Software.
+
+* THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*
+*/
+#ifndef __DH_ERROR_H__
+#define __DH_ERROR_H__
 #define DH_SUCCESS							(0x00)
 
 #define ERR_LINK_BASE						(0xFF000000)
@@ -52,3 +72,5 @@
 #define ERR_GAP_INTERNAL                    (ERR_GAP_BASE+0x000002)
 #define ERR_GAP_INVALID_PARAMS              (ERR_GAP_BASE+0x000003)
 #define ERR_GAP_BUFF_LEN                    (ERR_GAP_BASE+0x000004)
+
+#endif
