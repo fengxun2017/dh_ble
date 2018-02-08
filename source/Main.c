@@ -27,7 +27,17 @@
 
 #include "../include/DhGlobalHead.h"
 
-#define ADV_INTERVAL_MS     200
+#define nBLE_MAIN_DEBUG
+
+#if !defined(BLE_MAIN_DEBUG)
+#undef DEBUG_INFO
+#define DEBUG_INFO(...)
+#undef DEBUG_DATA
+#define DEBUG_DATA(...)
+#endif
+
+
+#define ADV_INTERVAL_MS     500
 
 
 
@@ -66,7 +76,7 @@ u4 DemoServiceInit(void)
     static u1  pu1CharRxBuff[BLE_ATT_MTU_SIZE];
     BlkGattCharCfg charCfg;
 
-
+	/* 创建一个演示的服务，有2个特征值，第一个具有读写和indication特性，第二个具有读写和notify特性*/
 	BleGattServiceDeclAdd(pu1MyServiceUuid, UUID_TYPE_16BIT);
     charCfg.m_BlkCharProps.m_u1ReadEnable = 1;
     charCfg.m_BlkCharProps.m_u1WriteCmdEnable = 1;
@@ -180,15 +190,22 @@ void LowPower(void)
     __WFE();
     __WFE();
 }
+
+void DebugInit(void)
+{
+    #ifdef DEBUG_LOG_USE_UART
+    UartInit();
+    #endif
+}
 int main(void)
 {
 	BlkBleAddrInfo	addr;
 	u1 testSend[20] = {0x11,0x22,0x44};
-	addr.m_u1AddrType = 0;
-	addr.m_pu1Addr[0] = 0x11;addr.m_pu1Addr[1] = 0x02;addr.m_pu1Addr[2] = 0x03;
+	addr.m_u1AddrType = 0;	// public
+	addr.m_pu1Addr[0] = 0x13;addr.m_pu1Addr[1] = 0x02;addr.m_pu1Addr[2] = 0x03;
 	addr.m_pu1Addr[3] = 0x04;addr.m_pu1Addr[4] = 0x05;addr.m_pu1Addr[5] = 0x06;
-    UartInit();	//开串口会有1ma的电流
-	DEBUG_INFO("start");
+    DebugInit();
+    DEBUG_INFO("start");
     BleStackInit();
 
 	
@@ -204,12 +221,12 @@ int main(void)
 	while(1)
 	{
         LowPower();
-		if(nrf_gpio_pin_read(20) == 0 ) // 连接后每个连接都会唤醒，可以检测按键，测试线这样吧
+		if(nrf_gpio_pin_read(20) == 0 ) // 连接后每个连接都会唤醒，可以检测按键，不过可能不灵敏，测试先这样吧
 		{
             BleGattSendNotify(g_u2TxHandle.m_u2ValueHandle, testSend, 20);
             while(nrf_gpio_pin_read(20)==0);
 		}
-		if(nrf_gpio_pin_read(19) == 0 ) // 连接后每个连接都会唤醒，可以检测按键，测试线这样吧
+		if(nrf_gpio_pin_read(19) == 0 ) // 连接后每个连接都会唤醒，可以检测按键，测试先这样吧
 		{
             BleGattSendIndication(g_u2RxHandle.m_u2ValueHandle, testSend, 20);
             while(nrf_gpio_pin_read(19)==0);

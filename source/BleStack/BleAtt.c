@@ -868,6 +868,7 @@ u4 BleAttSendNotify(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
     index += u2ValueLen;
     /* 先更新属性值再发送 */
     memcpy(pblkAtt->m_blkAttValue.m_pu1AttValue, pu1AttValue, u2ValueLen);
+    pblkAtt->m_blkAttValue.m_u2CurrentLen = u2ValueLen;
     if( BleL2capDataSend( BLE_L2CAP_ATT_CHANNEL_ID, pu1Notify, index ) != DH_SUCCESS )
     {
         return ERR_ATT_SEND_RSP_FAILED;
@@ -911,7 +912,7 @@ u4 BleAttSendIndication(u2 u2AttHandle, u1 *pu1AttValue, u2 len)
     index += u2ValueLen;
     /* 同时也要更新属性值 */
     memcpy(pblkAtt->m_blkAttValue.m_pu1AttValue, pu1AttValue, u2ValueLen);
-    
+    pblkAtt->m_blkAttValue.m_u2CurrentLen = u2ValueLen;
     if( BleL2capDataSend( BLE_L2CAP_ATT_CHANNEL_ID, pu1Indication, index ) != DH_SUCCESS )
     {
         return ERR_ATT_SEND_RSP_FAILED;

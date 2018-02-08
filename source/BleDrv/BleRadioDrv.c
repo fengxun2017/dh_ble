@@ -204,7 +204,7 @@ void BleRadioRxData( u1 u1Channel, u1 *pu1Data )
 void BleRadioSimpleRx(u1 *pu1Data)
 {
     NrfRadioPacketPtrCfg( pu1Data );
-    NrfRadioStartRx();
+   // NrfRadioStartRx();
 }
 
 /**
