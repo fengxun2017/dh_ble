@@ -197,6 +197,13 @@ void DebugInit(void)
     UartInit();
     #endif
 }
+
+/*
+	已知的未处理问题：
+1：未处理一个间隔发多包，可能手机会在发完一个包后，紧接着发另一个包，当前不能处理第二条，导致手机下个间隔会重发，而当前对于重发的都不处理，最终导致丢数据
+2：属性数据库中的属性值应该在每次连接后清空才对
+*/
+
 int main(void)
 {
 	BlkBleAddrInfo	addr;
@@ -208,7 +215,6 @@ int main(void)
     DEBUG_INFO("start");
     BleStackInit();
 
-	
     /* 名字和地址要在广播数据设置之前设置好 */
 	BleGapDeviceNameCfg("DH_BLE", strlen("DH_BLE"));
 	BleGapAddrCfg(addr);
