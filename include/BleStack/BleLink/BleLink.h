@@ -76,7 +76,10 @@ typedef struct
 typedef enum
 {
 	BLE_LINK_ADVERTISING = 0,		/* 广播中 */
-	BLE_LINK_CONNECTED,
+	BLE_LINK_CONNECTED,             /* 连接态，里面分了连接中子状态    ，连接上子状态 */
+	BLE_LINK_PRE_CONNING,           /* 一个连接建立前的特殊状态  
+	                                    以前链路细分状态转换是               广播-->连接中--->连接上
+	                                    现在链路细分状态转换是               广播-->准备连接前---->连接中--->连接上 */
 	BLE_LINK_STANDBY,				/* 空闲待命状态*/
 	
 	BLE_LINK_STATE_END,

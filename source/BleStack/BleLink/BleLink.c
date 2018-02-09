@@ -85,6 +85,12 @@ static void LinkRadioEvtHandler(EnBleRadioEvt evt)
 	}
 }
 
+static void PreConningStateHandle(EnBleRadioEvt evt)
+{
+    BleLinkStateSwitch(BLE_LINK_CONNECTED);	    // 链路状态切换到连接态。
+	LinkConnSubStateSwitch(CONN_CONNING_RX);	// 切换连接连接子状态到连接中状态。
+}
+
 /**
  *@brief: 		BleLinkInit
  *@details:		Ble链路初始化
@@ -109,6 +115,7 @@ void BleLinkInit(void)
 	LinkAdvStateInit();	//链路广播状态相关初始化
 	LinkConnStateInit(BLE_SCA_250_PPM);
 
+    BleLinkStateHandlerReg(BLE_LINK_PRE_CONNING, PreConningStateHandle);
 	
 	/* 使能协议栈下半部处理的软中断 */
 	NVIC_ClearPendingIRQ(BLE_STACK_SOFTIRQ);

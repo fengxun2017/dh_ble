@@ -42,7 +42,7 @@ char *ADV_SUB_STATE[5] = {"adv_idle","adv_tx","adv_rx","adv_txscanrsp","adv_rxti
 #define ADV_ROUND_OVER						(0xFE)					/* 广播一轮结束，每次广播周期到期后都在37,38,39通道上广播一次*/
 #define ADV_CHANNEL_SWITCH_TO_NEXT			0						/* 切换到下一个广播通道开始广播*/
 #define ADV_CHANNEL_SWITCH_TO_FIRST			1						/* 强制从第一个通道开始广播*/
-#define ADV_RX_WAIT_TIMEOUT					(600)					/* 每个通道上广播完后等待扫描请求或者连接请求的超时时间*/
+#define ADV_RX_WAIT_TIMEOUT					(800)					/* 每个通道上广播完后等待扫描请求或者连接请求的超时时间*/
 
 
 /* ble规范相关的一些定义 */
@@ -212,6 +212,7 @@ __INLINE static void  SwitchToNextChannel( u1 startFlag )
 
 __INLINE static void AdvRxWaitTimeoutHandler(void *pvalue)
 {
+    BleAutoToTxDisable();   //超时关闭radio前需要把自动发送关掉
 	// 等待接收超时则关闭接收并切换到下一个通道广播
 	LinkAdvSubStateSwitch(ADV_RX_TIMEOUT);
 	BleRadioDisable();
@@ -238,7 +239,7 @@ __INLINE static void AdvTxScanRsp(void)
 	channel = s_blkAdvStateInfo.m_u1CurrentChannel;				// 获取当前接收到扫描请求的通道
 	if( ADV_ROUND_OVER != channel )
 	{	
-    	BleRadioTxData(channel, s_blkAdvStateInfo.m_pu1LinkScanRspData, BLE_PDU_LENGTH);	// 长度字段实际没有作用	
+    	BleRadioSimpleTx(s_blkAdvStateInfo.m_pu1LinkScanRspData, BLE_PDU_LENGTH);	// 长度字段实际没有作用	
     	LinkAdvSubStateSwitch(ADV_TX_SCANRSP);
 		DEBUG_INFO("tx scan rsp on channel:%d", channel);
 		return ;
@@ -261,6 +262,7 @@ __INLINE static void HandleAdvTxDone(void)
 	advState = s_blkAdvStateInfo.m_enAdvSubState;								//获取广播子状态
 	if ( ADV_TX == advState )
 	{
+	    BleAutoToTxEnable();
 		// 发送完成后在当前通道上开始接收
 		BleRadioSimpleRx(s_blkAdvStateInfo.m_pu1LinkRxData);
 		LinkAdvSubStateSwitch(ADV_RX);
@@ -298,12 +300,39 @@ __INLINE static void HandleAdvRxDone(void)
 		{
 		    
 			AdvTxScanRsp();
-			DEBUG_INFO("scan req!!!");;
+			DEBUG_INFO("scan req!!!");
 		}
 		else if( PDU_TYPE_CONNECT_REQ == pduType && IsBleRadioCrcOk() )
 		{
-		
-			BleLPowerTimerStop(BLE_LP_TIMER0);	
+
+		    /*
+                BLE_LINK_PRE_CONNING 状态为添加的 处于广播态和 连接建立态 之间的状态
+                以前是广播-->连接中--->连接上
+	            现在是广播-->准备连接前---->连接中--->连接上
+
+	            对于每次发送广播数据来说下一步的动作一定是等待扫描请求，所以可以在发送广播数据之前打开发送结束后自动切换到接收的开关
+	            但是对于接收来说，如果接收的是扫描请求，那就要发送扫描响应，如果接收的是连接请求，那链路就要进入 连接中 状态了，不会主动发送该数据
+	            所以在广播态下对于接收到一个数据包后的动作是不一定的，所以之前的做法是等接收完了，判断是扫描请求还是连接请求。
+	            如果是扫描请求就准备发送扫描响应，如果是连接请求就准备建立连接。
+
+	            测试中发现部分手机扫描不到设备，抓包分析原因在于设备对于手机的扫描请求回的响应数据包可能太慢了。
+	            因为对于广播态下的接收操作，是接收完成后再解析，等解析是扫描请求这时候才开始准备发送，而启动发送nordic本身需要150us左右的准备时间
+
+	            综上，必须要加快对于扫描请求的响应。所以对于广播态的接收操作也像发送一样，做成自动切换。
+	            即每次接收前打开 接收完成后自动切换到发送态的开关。
+	            这样就可以利用在nordic芯片准备发送的150us时间来准备好数据，加快了响应速度。而不需要像之前一样先准备好再打开发送，这样会浪费150us
+
+	            不过因为接收到的不一定就是扫描请求，可能是连接请求，这时候是不需要发送数据的，所以需要及时关闭radio，不然就会有一个错误的发送行为。
+	            这里仅仅关闭操作还不行，因为代码实现中关闭后会产生 radio 完成事件，最终导致我 链路处于 连接建立中 状态，却收到了radio完成事件，以为是收到了连接后第一个包。最终就导致链路状态错误。
+
+	            所以这里需要再加一个状态BLE_LINK_PRE_CONNING，在关闭radio后，立刻将链路设置成这个BLE_LINK_PRE_CONNING 状态。
+	            当收到 radio完成事件后，如果是处于 BLE_LINK_PRE_CONNING 状态，则知道是收到了 连接建立请求后关闭radio操作引起的radio完成事件，而这时候链路是在准备 连接过程中，
+	            所以该状态下，收到radio 完成事件后要再将链路状态设置成 连接建立中
+	            
+		    */
+		    BleLinkStateSwitch(BLE_LINK_PRE_CONNING);
+		    BleRadioDisable();
+			BleLPowerTimerStop(BLE_LP_TIMER0);
 			LinkAdvSubStateSwitch(ADV_IDLE);
 			LinkConnReqHandle(TxAddType, pu1Rx+2, pu1Rx+14);
 			DEBUG_INFO("connect req!!!");
@@ -332,6 +361,7 @@ static void LinkAdvRadioEvtHandler(EnBleRadioEvt evt)
 		else if( ADV_RX == s_blkAdvStateInfo.m_enAdvSubState)
 		{
 			//接收完成
+			BleAutoToTxDisable();
 			HandleAdvRxDone();
 		}
 		else if( ADV_RX_TIMEOUT == s_blkAdvStateInfo.m_enAdvSubState )

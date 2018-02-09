@@ -27,6 +27,9 @@
 #ifndef __BLECONFIG_H__
 #define __BLECONFIG_H__
 
+
+#define DH_BLE_VERSION      0x0001      //2018-2-9 0.01版本
+
 #define BLE_VERSION			0x40
 
 #if (BLE_VERSION == 0x40)

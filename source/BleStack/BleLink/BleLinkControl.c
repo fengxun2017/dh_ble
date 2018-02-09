@@ -58,7 +58,7 @@
 
 #define LL_VERSION_COMPID				(0xFFFF)
 #define LL_VERSION_VERSNR				(BLE_VERSION_NUMBER)
-#define LL_VERSION_SUBVERSNR			(0x0022)
+#define LL_VERSION_SUBVERSNR			(DH_BLE_VERSION)
 
 #define TIMEOUT_PRT						(40000)		// 40s procedure response timeout
 

@@ -202,7 +202,7 @@ int main(void)
 	BlkBleAddrInfo	addr;
 	u1 testSend[20] = {0x11,0x22,0x44};
 	addr.m_u1AddrType = 0;	// public
-	addr.m_pu1Addr[0] = 0x13;addr.m_pu1Addr[1] = 0x02;addr.m_pu1Addr[2] = 0x03;
+	addr.m_pu1Addr[0] = 0x16;addr.m_pu1Addr[1] = 0x02;addr.m_pu1Addr[2] = 0x03;
 	addr.m_pu1Addr[3] = 0x04;addr.m_pu1Addr[4] = 0x05;addr.m_pu1Addr[5] = 0x06;
     DebugInit();
     DEBUG_INFO("start");

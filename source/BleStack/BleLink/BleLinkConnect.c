@@ -98,15 +98,7 @@
 #define LINK_TX_NEW_DATA            (4)
 #define LINK_TX_OLD_DATA            (8)
 
-typedef enum
-{
-	CONN_IDLE = 0,
-	CONN_CONNING_RX = 0x12,			// 连接建立中，收到连接请求后等待主机发过来的第一个数据包的过程
-	CONN_CONNECTED_TX = 0x21,		// 连接后的发送数据状态
-	CONN_CONNECTED_RX = 0x22,		// 连接后的等待数据状态
-	CONN_CONNECTED_RXTIMEOUT=0x30,  // 接收超时
-	CONN_CONNING_RXTIMEOUT = 0x40,
-}EnConnSubState;	// 连接态的子状态
+
 
 typedef struct
 {
@@ -233,7 +225,8 @@ static void BleNextTxDataInit()
     s_blkConnStateInfo.m_blkNextTxData.m_u1Length = 0;
     s_blkConnStateInfo.m_blkNextTxData.m_u1PacketFlag = DATA_PACKET;
 }
-__INLINE static void LinkConnSubStateSwitch(EnConnSubState enConnSubState)
+
+void LinkConnSubStateSwitch(EnConnSubState enConnSubState)
 {
 	s_blkConnStateInfo.m_enConnSubState = enConnSubState;
 }
@@ -889,8 +882,7 @@ void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData)
 
     s_blkConnStateInfo.m_u1ChannelMapNeedUpdateFlag = CHANNEL_MAP_UPDATED;
     s_blkConnStateInfo.m_u1ConnNeedUpdataFlag = CONN_PARAMS_UPDATED;
-	BleLinkStateSwitch(BLE_LINK_CONNECTED);	    // 链路状态切换到连接态。
-	LinkConnSubStateSwitch(CONN_CONNING_RX);	// 切换连接连接子状态到连接中状态。
+
 	BleTxBuffInit();                            // 初始化发送buff
 	BleNextTxDataInit();                        // 初始化下次要发送的包为空包
 	/* 设置连接过程中的CRC计算初值*/

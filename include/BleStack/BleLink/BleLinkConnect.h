@@ -49,7 +49,15 @@ typedef struct
     u1  m_u1ErrCode;
 }BlkBleDisconnectedEvent;
 
-
+typedef enum
+{
+	CONN_IDLE = 0,
+	CONN_CONNING_RX = 0x12,			// 连接建立中，收到连接请求后等待主机发过来的第一个数据包的过程
+	CONN_CONNECTED_TX = 0x21,		// 连接后的发送数据状态
+	CONN_CONNECTED_RX = 0x22,		// 连接后的等待数据状态
+	CONN_CONNECTED_RXTIMEOUT=0x30,  // 接收超时
+	CONN_CONNING_RXTIMEOUT = 0x40,
+}EnConnSubState;	// 连接态的子状态
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -59,7 +67,8 @@ extern "C"{
 
 extern void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData);
 extern void LinkConnStateInit(u1 sca);
-void LinkConnStateReset(void);
+extern void LinkConnStateReset(void);
+extern void LinkConnSubStateSwitch(EnConnSubState enConnSubState);
 
 #ifdef __cplusplus
 #if __cplusplus
