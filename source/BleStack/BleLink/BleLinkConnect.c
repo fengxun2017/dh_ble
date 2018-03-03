@@ -185,9 +185,10 @@ SN,NESN: 响应机制。 收到的NESN是告诉自己对方有没有收到前一
 	                                                做了替换唤醒睡眠监听连接事件的第一个数据包，这里记录一下唤醒后开始监听，
 	                                                到实际收到第一个数据包之间的延迟，作为经验值。在某个连接事件监听超时后需要用到该
 	                                                经验值来设置下次唤醒的时间*/                    
-	                                            
+    u1  m_u1ConnEventFirstPacketFlag;           /* 指示是否是当前连接事件中接收到的第一包数据 */
 	EnConnSubState		m_enConnSubState;		/* 连接态子状态 */
 	BlkHostToLinkData   m_blkNextTxData;        /* 提前设置好下一次要发送的数据 */
+
 	
 }BlkConnStateInfo;
 
@@ -579,7 +580,8 @@ static void ConnStatePrepareRxPacket(void *pValue)
             return ;
         }
     }
-	/* 设置本次连接事件所在的数据通道 *///----获取通道值内部有计算过程影响时序，抽出来再每个事件结束时就计算好下个事件通道,而不是每个事件开始才计算
+    s_blkConnStateInfo.m_u1ConnEventFirstPacketFlag = 1;    /* 每个连接事件开始接收前，都设置这个标记，收到数据后清除*/
+	/* 设置本次连接事件所在的数据通道 *///----获取通道值内部有计算过程可能影响时序，抽出来再每个事件结束时就计算好下个事件通道,而不是每个事件开始才计算
 //	u1DataChannel  = GetNextDataChannel();
 //	whiteIv = GetChannelWhiteIv(u1DataChannel);
 //	BleRadioWhiteIvCfg(whiteIv);
@@ -785,11 +787,11 @@ static void LinkConnRadioEvtHandler(EnBleRadioEvt evt)
 			*/
 			s_blkConnStateInfo.m_u2ConnSupervisionTimeoutCounter = s_blkConnStateInfo.m_u2connTimeoutBackup;
 
-			if( crcTrue && (!(ret&LINK_RX_OLD_DATA)) )
+			if( (crcTrue&&(!(ret&LINK_RX_OLD_DATA))) || (crcTrue&&s_blkConnStateInfo.m_u1ConnEventFirstPacketFlag) )
 			{
 			    BleLinkDataHandle();
 			}
-
+            s_blkConnStateInfo.m_u1ConnEventFirstPacketFlag = 0; /* 清除第一包标记 */
 			DEBUG_INFO("recved packet:%d,next anchor point:%d",rtcValue,u4SleepTimer);
 
 			/* 先设置好下次要发送的数据 */

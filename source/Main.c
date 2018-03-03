@@ -27,7 +27,7 @@
 
 #include "../include/DhGlobalHead.h"
 
-#define nBLE_MAIN_DEBUG
+#define BLE_MAIN_DEBUG
 
 #if !defined(BLE_MAIN_DEBUG)
 #undef DEBUG_INFO
@@ -102,43 +102,33 @@ u4 DemoServiceInit(void)
 
 void PrintfConnInfo(BlkBleEvent *event)
 {
-    u1 i;
     
-    DhPrintf("connected! params:\r\n");
-    DhPrintf("  peer addr type:%d   addr:",event->m_event.m_blkConnInfo.m_u1PeerBleAddrType);
-    for( i = 0; i < BLE_ADDR_LEN; i++ )
-    {
-        DhPrintf("%02x ",event->m_event.m_blkConnInfo.m_pu1PeerBleAddr[i]);
-    }
-    DhPrintf("\r\n");
-    DhPrintf("  interval:%d\r\n",event->m_event.m_blkConnInfo.m_u2ConnInterval);
-    DhPrintf("  timeout:%d\r\n",event->m_event.m_blkConnInfo.m_u2ConnTimeout);
-    DhPrintf("  latency:%d\r\n",event->m_event.m_blkConnInfo.m_u2SlaveLatency);
+    DEBUG_INFO("connected! params:");
+    DEBUG_INFO("  peer addr type:%d   addr:",event->m_event.m_blkConnInfo.m_u1PeerBleAddrType);
+    DEBUG_DATA(event->m_event.m_blkConnInfo.m_pu1PeerBleAddr,BLE_ADDR_LEN);
+    DEBUG_INFO("\r\n  interval:%d",event->m_event.m_blkConnInfo.m_u2ConnInterval);
+    DEBUG_INFO("  timeout:%d",event->m_event.m_blkConnInfo.m_u2ConnTimeout);
+    DEBUG_INFO("  latency:%d",event->m_event.m_blkConnInfo.m_u2SlaveLatency);
 }
 
 void PrintfDisconnInfo(BlkBleEvent *event)
 {
-    DhPrintf("Disconnected  reason: %02x\r\n", event->m_event.m_blkDisconnInfo.m_u1ErrCode);
+    DEBUG_INFO("Disconnected  reason: %02x", event->m_event.m_blkDisconnInfo.m_u1ErrCode);
 }
 
 void PrintfConnUpdateInfo(BlkBleEvent *event)
 {
-    DhPrintf("connect update!!\r\n");
-    DhPrintf("  interval:%d\r\n",event->m_event.m_blkConnUpdateInfo.m_u2ConnInterval);
-    DhPrintf("  timeout:%d\r\n",event->m_event.m_blkConnUpdateInfo.m_u2ConnTimeout);
-    DhPrintf("  latency:%d\r\n",event->m_event.m_blkConnUpdateInfo.m_u2SlaveLatency);
+    DEBUG_INFO("connect update!!");
+    DEBUG_INFO("  interval:%d",event->m_event.m_blkConnUpdateInfo.m_u2ConnInterval);
+    DEBUG_INFO("  timeout:%d",event->m_event.m_blkConnUpdateInfo.m_u2ConnTimeout);
+    DEBUG_INFO("  latency:%d",event->m_event.m_blkConnUpdateInfo.m_u2SlaveLatency);
 }
 
 void PrintfWriteInfo(BlkBleEvent *event)
 {
-    u2 i;
-
-    DhPrintf(" handle :%04x   receive data:",event->m_event.m_blkWriteInfo.m_u2AttHandle);
-    for( i = 0; i < event->m_event.m_blkWriteInfo.m_u2WriteLen; i++)
-    {
-        DhPrintf("%02x ",event->m_event.m_blkWriteInfo.m_pu1AttValue[i]);
-    }
-    DhPrintf("\r\n");
+    DEBUG_INFO(" handle :%04x   receive data:",event->m_event.m_blkWriteInfo.m_u2AttHandle);
+    DEBUG_DATA(event->m_event.m_blkWriteInfo.m_pu1AttValue,event->m_event.m_blkWriteInfo.m_u2WriteLen);
+    DEBUG_INFO("\r\n");
     
 }
 
@@ -165,7 +155,7 @@ void MyBleEventHandler(BlkBleEvent *event)
         break;
 
         case BlE_EVENT_RECV_HVC:
-            DhPrintf("receive handle value confirm\r\n");
+            DEBUG_INFO("receive handle value confirm");
 		break;
     }
 }
