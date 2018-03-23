@@ -49,7 +49,7 @@ void HwUartSimpleTxData(u1 *pu1Data, u2 len)
 
 
 /* 带换行的打印*/
-void DhPrintfLineFeed(const char *fmt,...)
+void DhPrintWithfLinefeed(const char *fmt,...)
 {
     u2  outLen;
     u1  buff[1024];

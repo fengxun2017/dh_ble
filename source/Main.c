@@ -183,24 +183,28 @@ void LowPower(void)
 
 void DebugInit(void)
 {
+#ifdef DEBUG_LOG
     #ifdef DEBUG_LOG_USE_UART
     UartInit();
     #endif
+#endif
 }
 
-/*
-	已知的未处理问题：
-1：未处理一个间隔发多包，可能手机会在发完一个包后，紧接着发另一个包，当前不能处理第二条，导致手机下个间隔会重发，而当前对于重发的都不处理，最终导致丢数据
-2：属性数据库中的属性值应该在每次连接后清空才对
-*/
+
 
 int main(void)
 {
 	BlkBleAddrInfo	addr;
 	u1 testSend[20] = {0x11,0x22,0x44};
+	
+	unsigned char keyArray[16] = {0x99,0xAD,0x1B,0x52,0x26,0xA3,0x7E,0x3E,0x05,0x8E,0x3B,0x8E,0x27,0xC2,0xC6,0x66};
+	unsigned char inData[64] = {0x49,0x00,0x00,0x00,0x00,0x80,0x24,0xAB,0xDC,0xBA,0xBE,0xBA,0xAF,0xDE,0x00,0x01};
+	unsigned char outData[64];	
+	unsigned char decData[64];	
+ 
 	addr.m_u1AddrType = 0;	// public
 	addr.m_pu1Addr[0] = 0x16;addr.m_pu1Addr[1] = 0x02;addr.m_pu1Addr[2] = 0x03;
-	addr.m_pu1Addr[3] = 0x04;addr.m_pu1Addr[4] = 0x05;addr.m_pu1Addr[5] = 0x06;
+	addr.m_pu1Addr[3] = 0x04;addr.m_pu1Addr[4] = 0x05;addr.m_pu1Addr[5] = 0x06;	
     DebugInit();
     DEBUG_INFO("start");
     BleStackInit();
@@ -208,6 +212,21 @@ int main(void)
     /* 名字和地址要在广播数据设置之前设置好 */
 	BleGapDeviceNameCfg("DH_BLE", strlen("DH_BLE"));
 	BleGapAddrCfg(addr);
+	
+//	SwAesEncryptData(keyArray, inData, 16,outData);
+//	SwAesDecryptData(keyArray, outData, 16, decData);
+//	DEBUG_INFO("plain data:");
+//	DEBUG_DATA(inData, 16);
+//	DEBUG_INFO("encypto data:");
+//	DEBUG_DATA(outData, 16);
+//	DEBUG_INFO("decypto data:");
+//	DEBUG_DATA(decData, 16); 
+//	if(memcmp(inData, decData, 16)==0)
+//	{
+//		DEBUG_INFO("check success!!!");
+//	}
+//	while(1);
+ 
     
     BleAdvDataInit();
     DemoServiceInit();

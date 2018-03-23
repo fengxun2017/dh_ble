@@ -24,7 +24,7 @@
 *
 */
 
-#include "../../include/DhGlobalHead.h"
+#include "../../../include/DhGlobalHead.h"
 
 #define SHORT_READ_START			(1<<0)
 #define SHORT_END_DISABLE			(1<<1)

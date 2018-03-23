@@ -42,9 +42,9 @@
 	#define DEBUG_WARNING		logw
 	#define DEBUG_ERROR			loge
 #elif defined(DEBUG_LOG_USE_UART)
-	#define DEBUG_INFO			DhPrintfLineFeed
-	#define DEBUG_WARNING		DhPrintfLineFeed
-	#define DEBUG_ERROR			DhPrintfLineFeed
+	#define DEBUG_INFO			DhPrintWithfLinefeed
+	#define DEBUG_WARNING		DhPrintWithfLinefeed
+	#define DEBUG_ERROR			DhPrintWithfLinefeed
 #endif
 
 

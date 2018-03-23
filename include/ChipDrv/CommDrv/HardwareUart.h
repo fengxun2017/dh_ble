@@ -58,7 +58,7 @@ extern "C"{
 extern void HwUartSimpleInit(u1 txPin, u1 rxPin, EnUartBaudrate enBaud);
 extern void HwUartSimpleTxData(u1 *pu1Data, u2 len);
 extern void DhPrintf(const char *fmt,...);
-extern void DhPrintfLineFeed(const char *fmt,...);
+extern void DhPrintWithfLinefeed(const char *fmt,...);
 #ifdef __cplusplus
 #if __cplusplus
 }

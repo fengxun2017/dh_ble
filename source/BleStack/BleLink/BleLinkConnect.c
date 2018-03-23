@@ -24,7 +24,7 @@
 *
 */
 
-#include "../../include/DhGlobalHead.h"
+#include "../../../include/DhGlobalHead.h"
 
 #define nBLE_LINK_CONN_DEBUG
 
@@ -944,6 +944,22 @@ void LinkConnStateReset(void)
     LinkConnSubStateSwitch(CONN_IDLE);
 }
 
+/**
+ *@brief: 		LinkPeerAddrInfo
+ *@details:		获取对端设备地址
+ *@param[in|out]    pu1Buff     返回 addrType+addr，地址为LSB格式  
+ *@param[in]        size        buff大小
 
+ */
+void LinkPeerAddrInfo(u1 *pu1Buff, u1 size)
+{
+    if ( NULL==pu1Buff || size<=(BLE_ADDR_LEN+1) )
+    {
+        return ;
+    }
+
+    pu1Buff[0] = s_blkConnStateInfo.m_u1PeerAddrType;
+    memcpy(pu1Buff+1, s_blkConnStateInfo.m_pu1PeerAddr, BLE_ADDR_LEN);
+}
 
 

@@ -23,53 +23,48 @@
 * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 *
 */
+#ifndef __BLESECURITYMANAGER_H__
+#define __BLESECURITYMANAGER_H__
 
-#ifndef __DHBLEEVENTNTF_H__
-#define __DHBLEEVENTNTF_H__
-
-#include "../DhGlobalHead.h"
-
-#define DH_BLE_CONNECTED				// 蓝牙连接
-#define DH_BLE_DISCONNECTED				// 蓝牙断开
+#define BLE_SM_PASSKEY_SIZE         (6)
 
 typedef enum
 {
-    BLE_EVENT_CONNECTED = 0x0001,
-    BLE_EVENT_DISCONNECTED,
-    BLE_EVENT_CONN_UPDATE,
-    BLE_EVENT_RECV_WRITE,
-    BlE_EVENT_RECV_HVC,                 // handle value confirm 对indication的响应 
-    BLE_EVENT_SM_DISP_KEY,
-    BLE_EVENT_SM_INPUT_KEY,
-}EnBleEvtType;
-
-
-
+    DISPLAY_ONLY = 0,
+    DISPLAY_YES_NO,
+    KEYBOARD_ONLY,
+    NO_INPUT_NO_OUTPUT,
+    KEYBOARD_DISPLAY,
+}EnDevIoCapacity;
 
 typedef struct
 {
-	EnBleEvtType   m_u2EvtType;			// 事件类型
-	union
-	{
-        BlkBleRecvWriteEvent    m_blkWriteInfo;
-        BlkBleConnectedEvent    m_blkConnInfo;
-        BlkBleDisconnectedEvent m_blkDisconnInfo;
-        BlkBleConnUpdateEvent   m_blkConnUpdateInfo;
-        BlkBleSmDispKeyEvent    m_blkSmDispKey;
-	}m_event;
-}BlkBleEvent;
+    u1  m_bEncKey:1;
+    u1  m_bIdKey:1;
+    u1  m_bSignKey:1;
+}BlkKeyDistribution;
+typedef struct
+{
+    EnDevIoCapacity     m_enIoCapacity;
+    u1                  m_u1OobFlag;
+    u1                  m_u1BondFlag;
+    u1                  m_u1MimtFlag;
+    u1                  m_u1MaxEncKeySize;
+    BlkKeyDistribution  m_blkInitiatorKeyMap;
+    BlkKeyDistribution  m_blkResponderKeyMap;
+}BlkBleSmParsms;
 
-typedef void (*BleEventHandler)(BlkBleEvent *event);
+typedef struct
+{
+    u1  pu1DispKey[BLE_SM_PASSKEY_SIZE];
+}BlkBleSmDispKeyEvent;
+
 
 #ifdef __cplusplus
 #if __cplusplus
 extern "C"{
 #endif
 #endif /* __cplusplus */
-
-extern u4 BleEventPush(BlkBleEvent event);
-extern void DhBleEventNtfInit(void);
-extern void DhBleEventHandlerReg(BleEventHandler handler);
 
 
 #ifdef __cplusplus
@@ -79,4 +74,4 @@ extern void DhBleEventHandlerReg(BleEventHandler handler);
 #endif /* __cplusplus */
 
 
-#endif /* __DHBLEEVENTNTF_H__ */
+#endif /* __BLESECURITYMANAGER_H__ */

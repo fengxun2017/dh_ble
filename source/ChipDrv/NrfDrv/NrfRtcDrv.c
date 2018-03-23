@@ -24,7 +24,7 @@
 *
 */
 
-#include "../../include/DhGlobalHead.h"
+#include "../../../include/DhGlobalHead.h"
 
 
 #define		INTEN_TICK			(1<<0)

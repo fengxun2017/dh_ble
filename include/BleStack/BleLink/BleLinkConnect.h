@@ -51,6 +51,13 @@ typedef struct
 
 typedef enum
 {
+    BLE_DATA_PACKET_CONTINUATION = 0x01,        // 高层报文延续包或空包
+    BLE_DATA_PACKET_START,
+    BLE_CONTROL_PACKET,
+}EnBlePacketType;
+
+typedef enum
+{
 	CONN_IDLE = 0,
 	CONN_CONNING_RX = 0x12,			// 连接建立中，收到连接请求后等待主机发过来的第一个数据包的过程
 	CONN_CONNECTED_TX = 0x21,		// 连接后的发送数据状态
@@ -69,6 +76,7 @@ extern void LinkConnReqHandle(u1 addrType, u1 *pu1Addr, u1* pu1LLData);
 extern void LinkConnStateInit(u1 sca);
 extern void LinkConnStateReset(void);
 extern void LinkConnSubStateSwitch(EnConnSubState enConnSubState);
+extern void LinkPeerAddrInfo(u1 *pu1Buff, u1 size);
 
 #ifdef __cplusplus
 #if __cplusplus

@@ -32,13 +32,19 @@
 #define DH_IRQ_PRIORITY_2		(2)
 #define DH_IRQ_PRIORITY_3		(3)
 
-#define UART_RX_PIN             (8)
-#define UART_TX_PIN             (9)
+
 
 #define HARDWARE_NRF51          
 
-#define nDEBUG_LOG
-#define nDEBUG_LOG_USE_UART      /* 使用串口打印信息时，只供应用程显示使用。不要再协议栈内部打印信息，串口打印太慢影响时序 */
+#define DEBUG_LOG
+#define DEBUG_LOG_USE_UART      /* 使用串口打印信息时，只供应用程显示使用。不要再协议栈内部打印信息，串口打印太慢影响时序 */
 #define nDEBUG_LOG_USE_RTT      /* 协议栈内部可以使用RTT打印调试信息，但是打印的位置不能影响时序 */
+
+
+#ifdef HARDWARE_NRF51
+    #define UART_RX_PIN             (8)
+    #define UART_TX_PIN             (9)
+    #define LITTLE_ENDIA
+#endif
 
 #endif

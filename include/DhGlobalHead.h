@@ -44,6 +44,8 @@
 #include "./debug/DhDebug.h"
 #include "./DhError.h"
 
+#include "./Crypto/SwAes/aes.h"
+#include "./Crypto/SwAes/aes_locl.h"
 #define CRITICAL_REGION_ENTER()		__disable_irq()
 #define CRITICAL_REGION_EXIT()		__enable_irq()
 
@@ -73,6 +75,7 @@ extern "C"{
 #include "./BleStack/BleAtt.h"
 #include "./BleStack/BleGatt.h"
 #include "./BleStack/BleGap.h"
+#include "./BleStack/BleSecurityManager.h"
 #include "./BleStack/DhBleEventNtf.h"
 
 #endif /* __DHGLOBALHEAD_H__ */

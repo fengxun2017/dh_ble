@@ -32,7 +32,7 @@
  					协议栈的底层处理分为2部分处理，时序相关的在中断中，剩下的为下半部放到软中断中处理
  					
 */
-#include "../../include/DhGlobalHead.h"
+#include "../../../include/DhGlobalHead.h"
 
 #define nBLE_LINK_DEBUG
 
@@ -274,4 +274,13 @@ void BLE_STACK_SOFTIRQ_HANDLER(void)
 			QueuePop(BLE_LINK_TO_HOST_DATA_QUEUE);
 		}
 	}while( NULL != pData );
+}
+
+void BleLinkPeerAddrInfoGet(BlkBleAddrInfo *addr)
+{
+    u1  tmp[BLE_ADDR_LEN+1];
+    LinkPeerAddrInfo(tmp, BLE_ADDR_LEN+1);
+
+    addr->m_u1AddrType = tmp[0];
+    memcpy(addr->m_pu1Addr,tmp+1, BLE_ADDR_LEN);
 }
