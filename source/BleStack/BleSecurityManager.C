@@ -215,7 +215,6 @@ u4 BleSecurityReqHandle(u1 *pu1Req, u2 u2Len)
         default:
             return SmPairingFail(SM_FAILED_COMMAND_NOT_SUPPORT);
         break;
-
     }
     
     
