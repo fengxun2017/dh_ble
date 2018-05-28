@@ -1,5 +1,6 @@
 /si/*
 /project/*
+!/project/DH_BLE.uvprojx
 
 # Prerequisites
 *.d

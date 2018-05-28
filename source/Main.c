@@ -263,12 +263,12 @@ int main(void)
         LowPower();
 		if(nrf_gpio_pin_read(20) == 0 ) // 连接后每个连接都会唤醒，可以检测按键，不过可能不灵敏，测试先这样吧
 		{
-            BleGattSendNotify(g_u2TxHandle.m_u2ValueHandle, testSend, 1);
+            BleGattSendNotify(g_u2TxHandle.m_u2ValueHandle, testSend, 20);
             while(nrf_gpio_pin_read(20)==0);
 		}
 		if(nrf_gpio_pin_read(19) == 0 ) // 连接后每个连接都会唤醒，可以检测按键，测试先这样吧
 		{
-            BleGattSendIndication(g_u2RxHandle.m_u2ValueHandle, testSend, 10);
+            BleGattSendIndication(g_u2RxHandle.m_u2ValueHandle, testSend, 20);
             while(nrf_gpio_pin_read(19)==0);
 		}
 	}
