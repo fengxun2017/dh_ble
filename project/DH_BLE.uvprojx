@@ -558,11 +558,6 @@
               <FileType>1</FileType>
               <FilePath>..\source\BleStack\BleGap.c</FilePath>
             </File>
-            <File>
-              <FileName>BleSecurityManager.C</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\source\BleStack\BleSecurityManager.C</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -587,21 +582,6 @@
               <FileName>HardwareUart.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\source\ChipDrv\CommDrv\HardwareUart.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>Crypto</GroupName>
-          <Files>
-            <File>
-              <FileName>Aes.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\source\Crypto\SwAes\Aes.c</FilePath>
-            </File>
-            <File>
-              <FileName>aes_core.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\source\Crypto\SwAes\aes_core.c</FilePath>
             </File>
           </Files>
         </Group>
