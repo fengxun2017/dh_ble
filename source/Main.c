@@ -44,7 +44,6 @@
 u4 BleAdvDataInit(void)
 {
     /* L T V 格式的广播数据 */
-//    u1 pu1AdvData[]={0x07,0x09,'D','H','_','B','L','E'};      // 广播名
     u1 pu1ScanRspData[]={0x06,0xFF,0x33,0x33,0x33,0x33,0x33};   // 厂商自定义数据 
 	
     BleAdvDataCfg(NULL, 0);
@@ -76,6 +75,7 @@ u4 DemoServiceInit(void)
     static u1  pu1CharRxBuff[BLE_ATT_MTU_SIZE];
     BlkGattCharCfg charCfg;
 
+    memset(&charCfg, 0x00, sizeof(charCfg));
 	/* 创建一个演示的服务，有2个特征值，第一个具有读写和indication特性，第二个具有读写和notify特性*/
 	BleGattServiceDeclAdd(pu1MyServiceUuid, UUID_TYPE_16BIT);
     charCfg.m_BlkCharProps.m_u1ReadEnable = 1;
@@ -87,12 +87,13 @@ u4 DemoServiceInit(void)
     BleGattCharacteristicAdd(charCfg, pu1CharRxBuff, sizeof(pu1CharRxBuff), &g_u2RxHandle);
     DEBUG_INFO("Rx Handle:%04X    cccd handle:%04x",g_u2RxHandle.m_u2ValueHandle, g_u2RxHandle.m_u2CccdHandle);
 
+    memset(&charCfg, 0x00, sizeof(charCfg));
     charCfg.m_BlkCharProps.m_u1ReadEnable = 1;
     charCfg.m_BlkCharProps.m_u1WriteReqEnable = 1;
     charCfg.m_BlkCharProps.m_u1NotifyEnable = 1;
     charCfg.m_blkUuid.m_pu1Uuid = pu1CharTxUuid;
     charCfg.m_blkUuid.m_u1UuidType = UUID_TYPE_16BIT;
-    charCfg.m_u2ValuePermission = ATT_PERMISSION_READ | ATT_PERMISSION_WRITE;
+    charCfg.m_u2ValuePermission = ATT_PERMISSION_READ | ATT_PERMISSION_WRITE|ATT_PERMISSION_READ_ENCRYPTION;
     BleGattCharacteristicAdd(charCfg, pu1CharTxBuff, sizeof(pu1CharTxBuff), &g_u2TxHandle);
     DEBUG_INFO("Rx Handle:%04X    cccd handle:%04x",g_u2TxHandle.m_u2ValueHandle,g_u2TxHandle.m_u2CccdHandle);
 	
@@ -128,13 +129,46 @@ void PrintfWriteInfo(BlkBleEvent *event)
 {
     DEBUG_INFO(" handle :%04x   receive data:",event->m_event.m_blkWriteInfo.m_u2AttHandle);
     DEBUG_DATA(event->m_event.m_blkWriteInfo.m_pu1AttValue,event->m_event.m_blkWriteInfo.m_u2WriteLen);
-    DEBUG_INFO("\r\n");
-    
 }
 
-void MyBleEventHandler(BlkBleEvent *event)
+void BleSmEvtHandler(BlkBleEvent *event)
 {
+    BlkBleSmParsms smParams;
+    BlkBleSmKeysExchange keysBuff;
     
+    switch(event->m_u2EvtType)
+    {
+        case BLE_EVENT_SM_PAIRING_REQ:
+            DEBUG_INFO("recv pairing req!");
+            memset(&smParams, 0x00, sizeof(smParams));
+            smParams.m_u1MimtFlag = BLE_PAIRING_MITM_NEED;
+            smParams.m_u1BondFlag = BLE_PAIRING_NO_BONDING;
+            smParams.m_u1IoCapacity = DEV_NO_INPUT_NO_OUTPUT;
+            smParams.m_u1MaxEncKeySize = BLE_SECURITY_KEY_LEN;
+            smParams.m_u1OobFlag = BLE_PAIRING_OOB_NOT_PRESENT;
+            keysBuff.m_pblkMasterKeys = NULL;
+            keysBuff.m_pblkSlaveKeys = NULL;
+            BleSmPairingParamsRsp(smParams, keysBuff);
+        break;
+
+        case BLE_EVENT_SM_ENC_COMPLETE:
+            DEBUG_INFO("link encrypt complete!");
+		break;
+
+		case BLE_EVENT_SM_FAILED:
+            DEBUG_INFO("pairing failed! dir:%s reason:%02x",event->m_event.m_blkSmFailed.m_u1Dir?"Master":"Slave" ,event->m_event.m_blkSmFailed.m_u1FailedReason);
+        break;
+
+        
+		default:
+
+		break;
+    }
+}
+
+
+void ComEventHandler(BlkBleEvent *event)
+{
     switch(event->m_u2EvtType)
     {
         case BLE_EVENT_CONNECTED:
@@ -157,7 +191,17 @@ void MyBleEventHandler(BlkBleEvent *event)
         case BlE_EVENT_RECV_HVC:
             DEBUG_INFO("receive handle value confirm");
 		break;
+
+		default:
+		break;
     }
+}
+
+void MyBleEventHandler(BlkBleEvent *event)
+{
+
+    BleSmEvtHandler(event);
+    ComEventHandler(event);
 }
 
 
@@ -197,15 +241,11 @@ int main(void)
 	BlkBleAddrInfo	addr;
 	u1 testSend[20] = {0x11,0x22,0x44};
 	
-	unsigned char keyArray[16] = {0x99,0xAD,0x1B,0x52,0x26,0xA3,0x7E,0x3E,0x05,0x8E,0x3B,0x8E,0x27,0xC2,0xC6,0x66};
-	unsigned char inData[64] = {0x49,0x00,0x00,0x00,0x00,0x80,0x24,0xAB,0xDC,0xBA,0xBE,0xBA,0xAF,0xDE,0x00,0x01};
-	unsigned char outData[64];	
-	unsigned char decData[64];	
- 
 	addr.m_u1AddrType = 0;	// public
 	addr.m_pu1Addr[0] = 0x16;addr.m_pu1Addr[1] = 0x02;addr.m_pu1Addr[2] = 0x03;
 	addr.m_pu1Addr[3] = 0x04;addr.m_pu1Addr[4] = 0x05;addr.m_pu1Addr[5] = 0x06;	
-    DebugInit();
+
+	DebugInit();
     DEBUG_INFO("start");
     BleStackInit();
 
@@ -213,21 +253,6 @@ int main(void)
 	BleGapDeviceNameCfg("DH_BLE", strlen("DH_BLE"));
 	BleGapAddrCfg(addr);
 	
-//	SwAesEncryptData(keyArray, inData, 16,outData);
-//	SwAesDecryptData(keyArray, outData, 16, decData);
-//	DEBUG_INFO("plain data:");
-//	DEBUG_DATA(inData, 16);
-//	DEBUG_INFO("encypto data:");
-//	DEBUG_DATA(outData, 16);
-//	DEBUG_INFO("decypto data:");
-//	DEBUG_DATA(decData, 16); 
-//	if(memcmp(inData, decData, 16)==0)
-//	{
-//		DEBUG_INFO("check success!!!");
-//	}
-//	while(1);
- 
-    
     BleAdvDataInit();
     DemoServiceInit();
     AdvertisingStart();
@@ -238,12 +263,12 @@ int main(void)
         LowPower();
 		if(nrf_gpio_pin_read(20) == 0 ) // 连接后每个连接都会唤醒，可以检测按键，不过可能不灵敏，测试先这样吧
 		{
-            BleGattSendNotify(g_u2TxHandle.m_u2ValueHandle, testSend, 20);
+            BleGattSendNotify(g_u2TxHandle.m_u2ValueHandle, testSend, 1);
             while(nrf_gpio_pin_read(20)==0);
 		}
 		if(nrf_gpio_pin_read(19) == 0 ) // 连接后每个连接都会唤醒，可以检测按键，测试先这样吧
 		{
-            BleGattSendIndication(g_u2RxHandle.m_u2ValueHandle, testSend, 20);
+            BleGattSendIndication(g_u2RxHandle.m_u2ValueHandle, testSend, 10);
             while(nrf_gpio_pin_read(19)==0);
 		}
 	}

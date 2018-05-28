@@ -50,16 +50,17 @@ typedef struct
 
 
 
-
+#define ATT_OPERATE_READ                        0x01
+#define ATT_OPERATE_WRITE                       0x02
 
 #define ATT_PERMISSION_READ						0x01	/* 允许读 */
 #define ATT_PERMISSION_WRITE					0x02	/* 允许写 */
-#define ATT_PERMISSION_READ_AUTHENTICATION		0x04	/* 读需要链路认证过 */
-#define ATT_PERMISSION_WRITE_AUTHENTICATION		0x08	/* 写需要链路认证过 */
-#define ATT_PERMISSION_READ_AUTHORIZATION		0x10	/* 读需要需要授权 */
-#define ATT_PERMISSION_WRITE_AUTHORIZATION		0x20	/* 写需要需要授权 */
-#define ATT_PERMISSION_READ_ENCRYPTION			0x40	/* 读需要链路加密 */
-#define ATT_PERMISSION_WRITE_ENCRYPTION			0x80	/* 写需要链路加密 */
+#define ATT_PERMISSION_READ_AUTHENTICATION		0x04	/* 读需要链路认证加密过 */
+#define ATT_PERMISSION_WRITE_AUTHENTICATION		0x08	/* 写需要链路认证加密过 */
+//#define ATT_PERMISSION_READ_AUTHORIZATION		0x10	/* 读需要需要授权,暂不实现 */
+//#define ATT_PERMISSION_WRITE_AUTHORIZATION	0x20	/* 写需要需要授权,暂不实现 */
+#define ATT_PERMISSION_READ_ENCRYPTION			0x40	/* 读需要链路加密--仅加密就可以 */
+#define ATT_PERMISSION_WRITE_ENCRYPTION			0x80	/* 写需要链路加密--仅加密就可以 */
 
 #define ATT_PROPERTIES_BROADCAST				0x01
 #define ATT_PROPERTIES_READ						0x02

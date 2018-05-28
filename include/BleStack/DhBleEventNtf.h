@@ -39,8 +39,14 @@ typedef enum
     BLE_EVENT_CONN_UPDATE,
     BLE_EVENT_RECV_WRITE,
     BlE_EVENT_RECV_HVC,                 // handle value confirm 对indication的响应 
+    
     BLE_EVENT_SM_DISP_KEY,
     BLE_EVENT_SM_INPUT_KEY,
+    BLE_EVENT_SM_PAIRING_REQ,
+    BLE_EVENT_SM_ENC_COMPLETE,          // 链路加密过程完成。
+    BLE_EVENT_SM_BONDING_COMPLETE,
+    BLE_EVENT_SM_LTK_REQ,
+    BLE_EVENT_SM_FAILED,
 }EnBleEvtType;
 
 
@@ -51,11 +57,18 @@ typedef struct
 	EnBleEvtType   m_u2EvtType;			// 事件类型
 	union
 	{
-        BlkBleRecvWriteEvent    m_blkWriteInfo;
-        BlkBleConnectedEvent    m_blkConnInfo;
-        BlkBleDisconnectedEvent m_blkDisconnInfo;
-        BlkBleConnUpdateEvent   m_blkConnUpdateInfo;
-        BlkBleSmDispKeyEvent    m_blkSmDispKey;
+        BlkBleRecvWriteEvent            m_blkWriteInfo;
+        BlkBleConnectedEvent            m_blkConnInfo;
+        BlkBleDisconnectedEvent         m_blkDisconnInfo;
+        BlkBleConnUpdateEvent           m_blkConnUpdateInfo;
+        
+        BlkBleSmKeyDispEvent            m_blkSmKeyDisp;
+        BlkBleSmKeyInputEvent           m_blkSmKeyInput;
+        BlkBleSmPairingReqEvent         m_blkSmPairingReq;
+        BlkBleSmFailedEvent             m_blkSmFailed;
+        BlkBleSmEncCompleteEvent        m_blkSmEncComplete;
+        BlKBleSmBondingCompleteEvent    m_blkSmBondingComplete;
+        BlkBleSmLtkReqEvent             m_blkSmLtkReq;
 	}m_event;
 }BlkBleEvent;
 

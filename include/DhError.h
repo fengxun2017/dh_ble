@@ -34,6 +34,7 @@
 #define ERR_LINK_NOT_CHANNEL_MAP_REQ        (ERR_LINK_BASE+0x00000005)
 #define ERR_LINK_NOT_CONN_UPDATE_REQ        (ERR_LINK_BASE+0x00000006)
 #define ERR_LINK_STATE_INVALID              (ERR_LINK_BASE+0x00000007)
+#define ERR_LINK_MIC_FAILED                 (ERR_LINK_BASE+0x00000008)
 
 #define ERR_HA_TIMER_BASE					(0xFE000000)
 #define ERR_LP_TIMER_BASE					(0xFD000000)
@@ -75,4 +76,7 @@
 
 #define ERR_SM_BASE                         (0xF6000000)
 #define ERR_SM_INVALID_PARAMS               (ERR_SM_BASE+0x00000001)
+
+#define ERR_COMM_BASE                       (0xF5000000)
+#define ERR_COMM_INVALID_PARAMS             (ERR_COMM_BASE+0x00000001)
 #endif

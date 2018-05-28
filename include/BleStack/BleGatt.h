@@ -75,8 +75,8 @@ typedef struct
 {
     BlkAttributeType    m_blkUuid;          // 特性值的UUID
     BlkCharProperties   m_BlkCharProps;     // 是否支持读写等特性
-    u2  m_u2ValuePermission;                // 特性值的许可条件
-    u2  m_u2CCCDPermission;                 // 客户端特性配置描述符的许可条件
+    u2  m_u2ValuePermission;                // 特性值的许可条件,若未设置默认配置成可读写
+    u2  m_u2CCCDPermission;                 // 客户端特性配置描述符的许可条件，若未设置默认配置为可读写
 }BlkGattCharCfg;
 
 #ifdef __cplusplus

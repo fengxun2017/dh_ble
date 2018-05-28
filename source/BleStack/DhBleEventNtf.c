@@ -30,7 +30,7 @@
 #define BLE_EVENT_NTF_IRQ_HANDLER			SWI0_IRQHandler
 static BleEventHandler s_bleEventHandler = NULL;
 
-#define BLE_EVENT_QUEUE_SIZE		(8)
+#define BLE_EVENT_QUEUE_SIZE		(16)    /* 必须是2的n次幂*/
 
 /* 创建事件通知队列 */
 CREATE_QUEUE_INSTANCE(BLE_EVENT_NTF_QUEUE, BlkBleEvent, BLE_EVENT_QUEUE_SIZE);

@@ -539,5 +539,7 @@ u4 LinkAdvStart(void)
  	return DH_SUCCESS;
 }
 
-
-
+void BleLinkSelfAddrInfoGet(BlkBleAddrInfo *addr)
+{
+    *addr = s_blkAdvStateInfo.m_blkAddrInfo;
+}

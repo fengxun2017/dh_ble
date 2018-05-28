@@ -27,6 +27,10 @@
 #ifndef __DHBLEAUX_H__
 #define __DHBLEAUX_H__
 
+#include "./DhGlobalHead.h"
+
+#define DH_MIN(a,b) ((a)<(b)?(a):(b))
+#define DH_MAX(a,b) ((a)>(b)?(a):(b))
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -34,9 +38,17 @@ extern "C"{
 #endif
 #endif /* __cplusplus */
 
-extern u2 BleGetChannelFreq(u1 u1Channel);
+extern u2   BleGetChannelFreq(u1 u1Channel);
 
-extern u1	GetChannelWhiteIv(u1 u1Channel );
+extern u1   GetChannelWhiteIv(u1 u1Channel );
+
+extern void DhMemxor(u1 *pu1Data1, u1 *pu1Data2, u2 u2Len);
+
+extern u4   DhAesEnc(u1 *pu1In, u1 *pu1Key, u1 *pu1Out);
+
+extern u4   DhAesEnc2(u1 *pu1In, u1 *pu1Key, u1 *pu1Out);
+
+extern void DhGetRand(u1 *pu1Data, u2 len);
 
 #ifdef __cplusplus
 #if __cplusplus

@@ -34,7 +34,7 @@
 */
 #include "../../../include/DhGlobalHead.h"
 
-#define nBLE_LINK_DEBUG
+#define BLE_LINK_DEBUG
 
 #if !defined(BLE_LINK_DEBUG)
 #undef DEBUG_INFO
@@ -57,7 +57,7 @@ typedef struct
 
 
 BlkBleLinkInfo s_blkLinkInfo;
-
+u1  s_u1HostPushFlag = 0;
 
 /* 
 	分离芯片实现的ble协议栈可以分为control 和 host 2部分，既由2颗芯片实现完整协议栈，通过hci通信
@@ -66,8 +66,12 @@ BlkBleLinkInfo s_blkLinkInfo;
 	这里是在一个芯片上实现完整协议栈所以没有明确的control和host区分，也没有hci
 */
 /* 创建host->link 和link->host2个方向的队列 */
-#define BLE_DATA_QUEUQ_SIZE				(8)
+#define BLE_DATA_QUEUQ_SIZE				(16)        /* 必须是2的n次幂 */
+
+/* 链路收到的数据除了空包，和一些需要特殊处理的数据包都丢到LINK_TO_HOST队列去，再后续软中断再处理，一些link control命令也是当做host数据丢进去*/
 CREATE_QUEUE_INSTANCE(BLE_LINK_TO_HOST_DATA_QUEUE, BlkLinkToHostData, BLE_DATA_QUEUQ_SIZE);
+
+/* 上层应用的发送是异步的，数据都是丢到这个队列中，和每个ble同步事件中会从队列中取出来再实际发送 */
 CREATE_QUEUE_INSTANCE(BLE_HOST_TO_LINK_DATA_QUEUE, BlkHostToLinkData, BLE_DATA_QUEUQ_SIZE);
 
 
@@ -89,6 +93,21 @@ static void PreConningStateHandle(EnBleRadioEvt evt)
 {
     BleLinkStateSwitch(BLE_LINK_CONNECTED);	    // 链路状态切换到连接态。
 	LinkConnSubStateSwitch(CONN_CONNING_RX);	// 切换连接连接子状态到连接中状态。
+}
+
+static u1 IsHostPushing(void)
+{
+    return s_u1HostPushFlag;
+}
+
+static void HostPushingFlagCfg(void)
+{
+    s_u1HostPushFlag = 1;
+}
+
+static void HostPushingFlagClr(void)
+{
+    s_u1HostPushFlag = 0;
 }
 
 /**
@@ -124,6 +143,14 @@ void BleLinkInit(void)
 	
 }
 
+u4 NotifyHostDisconn(u1 reason)
+{
+    BlkBleEvent bleEvent;
+    
+    bleEvent.m_u2EvtType = BLE_EVENT_DISCONNECTED;
+    bleEvent.m_event.m_blkDisconnInfo.m_u1ErrCode = reason;   // 表示超时断开
+    return BleEventPush( bleEvent );
+}
 
 /**
  *@brief: 		BleLinkReset
@@ -136,7 +163,15 @@ void BleLinkReset(void)
     /* 关闭协议栈的定时器 */
     LinkAdvStateReset();
     LinkConnStateReset();
+    LinkConnStateInit(BLE_SCA_250_PPM);
     BleLinkStateSwitch(BLE_LINK_STANDBY);
+}
+
+void BleDisconnCommHandle(u1 DisconnReason)
+{
+    BleLinkReset();
+    NotifyHostDisconn(DisconnReason);
+    BleSecurityManagerInit();
 }
 
 /**
@@ -166,29 +201,61 @@ void BleLinkStateSwitch(EnBleLinkState state)
 }
 
 
+
+
 /**
  *@brief: 		BleHostDataToLinkPush
  *@details:		应用层的数据放到队列中，合适的时候链路层再发出去
- *@param[in]	blkData  
+                ！！当前链路控制的一些指令处理也是通过该接口发送。
+ *@param[in]	blkSendData  
 
  *@retval:		DH_SUCCESS
  */
-u4 BleHostDataToLinkPush(BlkHostToLinkData blkData)
+u4 BleHostDataToLinkPush(BlkHostToLinkData blkSendData)
 {
 	BlkHostToLinkData *pblkData;
-
+    u1  llid;
+	u1  pu1SK[BLE_ENC_KEY_SIZE];
+	u2  u2EncLen;
+	
 	if( BLE_LINK_CONNECTED != s_blkLinkInfo.m_enState )
 	{
         return ERR_LINK_STATE_INVALID;
 	}
+	/* 这里只是从队列中取出一个元素，但实际赋值操作在后面，所以有一个时间差，可能刚取出元素，还没赋值,ble事件来了判断队列有数据
+	    于是将没赋值的队列元素数据发送出去了*/
+	HostPushingFlagCfg();   
 	pblkData = (BlkHostToLinkData *)QueueEmptyElemGet(BLE_HOST_TO_LINK_DATA_QUEUE, sizeof(BlkHostToLinkData));
 	if( NULL == pblkData )
 	{
 		return ERR_DH_QUEUE_FULL;
 	}
-	memcpy(pblkData->m_pu1HostData, blkData.m_pu1HostData, BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH);
-	pblkData->m_u1Length = blkData.m_u1Length;
-    pblkData->m_u1PacketFlag = blkData.m_u1PacketFlag;
+	llid = blkSendData.m_u1PacketFlag;
+	if ( LINK_ENCRYPTED==LinkEncKeyGet(pu1SK) ) /* 链路加密 */
+	{
+	    DEBUG_INFO("send packet count:%d",GetSendPacketCounter());
+	    u2EncLen = BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH;    //加密后的最长数据
+	    LinkDataEnc(llid, 0, pu1SK, blkSendData.m_pu1HostData, blkSendData.m_u2Length, pblkData->m_pu1HostData, &u2EncLen);
+	    pblkData->m_u2Length = u2EncLen;
+	    UpdateSendPacketCounter();
+	}
+	else
+	{  
+	    /*判断从什么时候开始需要加密--临时处理方式，后面看看有没有别的更好的方式*/
+	    if(blkSendData.m_u1PacketFlag==CONTROL_PACKET)
+    	{  
+            if(blkSendData.m_pu1HostData[0] == 0x05)//LL_START_ENC_REQ)
+            {
+                DEBUG_INFO("start encrypt");
+                LinkEncStartFlagCfg(LINK_DATA_ENC_FLAG);
+                BleSecurityStatusValid(SECURITY_STATUS_VALID);
+            }
+    	}
+    	memcpy(pblkData->m_pu1HostData, blkSendData.m_pu1HostData, BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH);
+    	pblkData->m_u2Length = blkSendData.m_u2Length;
+    }
+    pblkData->m_u1PacketFlag = blkSendData.m_u1PacketFlag;
+    HostPushingFlagClr();
 	return DH_SUCCESS;
 }
 
@@ -208,12 +275,12 @@ u4 BleHostDataToLinkPop(BlkHostToLinkData *pblkData)
 		return ERR_LINK_INVALID_PARAMS;
 	}
 	tmp = (BlkHostToLinkData*)QueueValidElemGet(BLE_HOST_TO_LINK_DATA_QUEUE, sizeof(BlkHostToLinkData));
-	if( NULL == tmp)
+	if( (NULL==tmp) || IsHostPushing() )
 	{
 		return ERR_DH_QEUEUE_EMPTY;
 	}
 	memcpy(pblkData->m_pu1HostData, tmp->m_pu1HostData, BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH);
-	pblkData->m_u1Length = tmp->m_u1Length;
+	pblkData->m_u2Length = tmp->m_u2Length;
 	pblkData->m_u1PacketFlag = tmp->m_u1PacketFlag;
 	QueuePop(BLE_HOST_TO_LINK_DATA_QUEUE);
 
@@ -223,11 +290,11 @@ u4 BleHostDataToLinkPop(BlkHostToLinkData *pblkData)
 /**
  *@brief: 		BleLinkDataToHostPush
  *@details:		链路层收到的数据放入队列中，通过软中断通知到host层
- *@param[in]	blkData  
+ *@param[in]	blkSendData  
 
  *@retval:		DH_SUCCESS
  */
-u4 BleLinkDataToHostPush(BlkLinkToHostData blkData)
+u4 BleLinkDataToHostPush(BlkLinkToHostData blkSendData)
 {
 	BlkLinkToHostData *pblkData;
 	
@@ -237,7 +304,7 @@ u4 BleLinkDataToHostPush(BlkLinkToHostData blkData)
 		return ERR_DH_QUEUE_FULL;
 	}
 	
-	memcpy(pblkData->m_pu1LinkData, blkData.m_pu1LinkData, BLE_PDU_LENGTH);
+	memcpy(pblkData->m_pu1LinkData, blkSendData.m_pu1LinkData, BLE_PDU_LENGTH);
 
 	/* 触发软中断去处理 */
 	NVIC_SetPendingIRQ(BLE_STACK_SOFTIRQ);
@@ -248,10 +315,10 @@ u4 BleLinkDataToHostPush(BlkLinkToHostData blkData)
 void BLE_STACK_SOFTIRQ_HANDLER(void)
 {
 	u1	llid;
-	u2	len;
+	u2	len,u2DecLen;
+	u1  pu1SK[BLE_ENC_KEY_SIZE];
 	BlkBlePduHeader *pHeader;
 	BlkLinkToHostData *pData;
-	DEBUG_INFO("soft irq!!!");
 	do{
 		pData = (BlkLinkToHostData *)QueueValidElemGet(BLE_LINK_TO_HOST_DATA_QUEUE, sizeof(BlkLinkToHostData));
 		if( NULL != pData )
@@ -259,15 +326,30 @@ void BLE_STACK_SOFTIRQ_HANDLER(void)
 			pHeader = (BlkBlePduHeader *)pData->m_pu1LinkData;
 			llid = pHeader->m_u1Header1&0x03;
 			len = pHeader->m_u1Header2&0x1F;
-			
-			if ( LLID_CONTROL==llid  && len>0 )
+
+			if ( LLID_CONTROL==llid  && len>0 ) /* 链路控制在接收的时候已经解密了 */
 			{
-			    DEBUG_INFO("link control");
+			    DEBUG_INFO("link control:%d",pData->m_pu1LinkData[2]);
 				BleLinkControlHandle(pData->m_pu1LinkData+BLE_PDU_HEADER_LENGTH, len);
 			}
 			else if( (LLID_CONTINUATION==llid || LLID_START==llid) && len>0 )
 			{
-			    DEBUG_INFO("l2cap handle");
+    			if ( LINK_ENCRYPTED==LinkEncKeyGet(pu1SK) )   /* 链路加密了 */
+    			{
+    			    u2DecLen = BLE_PDU_LENGTH;
+    			    DEBUG_INFO("recv packet count:%d",GetRecvPacketCounter());
+    			    if( ERR_LINK_MIC_FAILED==LinkDataDec(llid, 1, pu1SK, pData->m_pu1LinkData+BLE_PDU_HEADER_LENGTH, len, pData->m_pu1LinkData+BLE_PDU_HEADER_LENGTH, &u2DecLen) )
+    			    {
+                        /* MIC错误就断开 */
+                        BleDisconnCommHandle(LINK_DISCONN_REASON_MIC_FAILED);
+                        return ;
+                    }
+                    else
+                    {
+                        UpdateRecvPacketCounter();  /* 每解密一包数据增加计数 */
+                    }
+                    len = u2DecLen;
+    			}
 				BleL2capHandle(pData->m_pu1LinkData+BLE_PDU_HEADER_LENGTH, len);
 			}
 			/* 数据处理完要出队 */
@@ -284,3 +366,4 @@ void BleLinkPeerAddrInfoGet(BlkBleAddrInfo *addr)
     addr->m_u1AddrType = tmp[0];
     memcpy(addr->m_pu1Addr,tmp+1, BLE_ADDR_LEN);
 }
+

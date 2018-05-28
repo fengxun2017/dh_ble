@@ -26,7 +26,7 @@
 
 #include "../../../include/DhGlobalHead.h"
 
-#define nBLE_LINK_CONTROL_DEBUG
+#define BLE_LINK_CONTROL_DEBUG
 
 #if !defined(BLE_LINK_CONTROL_DEBUG)
 #undef DEBUG_INFO
@@ -39,6 +39,10 @@
 #define LL_CHANNEL_MAP_REQ				0x01
 #define LL_TERMINATE_IND				0x02
 #define LL_ENC_REQ						0x03
+    #define LL_ENC_RAND_LEN             (0x08)
+    #define LL_ENC_EDIV_LEN             (0x02)
+    #define LL_ENC_SKD_LEN              (0x08)
+    #define LL_ENC_IV_LEN               (0x04)
 #define LL_ENC_RSP						0x04
 #define LL_START_ENC_REQ				0x05
 #define LL_START_ENC_RSP				0x06
@@ -60,7 +64,9 @@
 #define LL_VERSION_VERSNR				(BLE_VERSION_NUMBER)
 #define LL_VERSION_SUBVERSNR			(DH_BLE_VERSION)
 
+
 #define TIMEOUT_PRT						(40000)		// 40s procedure response timeout
+
 
 static u4 LinkFeatureReqHandle(u1	*pu1FearureSet, u2 len)
 {
@@ -75,10 +81,11 @@ static u4 LinkFeatureReqHandle(u1	*pu1FearureSet, u2 len)
 	memset(rspData.m_pu1HostData, 0x00, BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH);
 	rspData.m_pu1HostData[0] = LL_FEATURE_RSP;
 	rspData.m_pu1HostData[1] |=  FEATURE_SUPPORT_LE_ENCY;
-	rspData.m_u1Length = LL_FEATURE_SET_SIZE + 1;	//opcode
+	rspData.m_u2Length = LL_FEATURE_SET_SIZE + 1;	//opcode
 	// 链路控制目前也用这个接口好了
 
 	rspData.m_u1PacketFlag = CONTROL_PACKET;
+	DEBUG_INFO("recv feature");
 	BleHostDataToLinkPush(rspData);
 	
 	return DH_SUCCESS;
@@ -103,14 +110,15 @@ static u4 LinkVersionIndHandle(u1 *peerVersion, u2 len)
 	rspData.m_pu1HostData[rspLen++] = LL_VERSION_SUBVERSNR&0xff;
 	rspData.m_pu1HostData[rspLen++] = LL_VERSION_SUBVERSNR>>8;
 	
-	rspData.m_u1Length = rspLen;	//opcode
+	rspData.m_u2Length = rspLen;	//opcode
 	rspData.m_u1PacketFlag = CONTROL_PACKET;
 	// 链路控制目前也用这个接口好了
 	BleHostDataToLinkPush(rspData);
 	return DH_SUCCESS;
 }
 
-void LinkRspUnknown(u1 opcode)
+
+static u4 LinkRspUnknown(u1 opcode)
 {
 	BlkHostToLinkData rspData;
 	u2	rspLen = 0;
@@ -119,10 +127,45 @@ void LinkRspUnknown(u1 opcode)
 	rspData.m_pu1HostData[rspLen++] = LL_UNKNOWN_RSP;
 	rspData.m_pu1HostData[rspLen++] = opcode;
 	
-	rspData.m_u1Length = rspLen;	//opcode
+	rspData.m_u2Length = rspLen;	//opcode
 	rspData.m_u1PacketFlag = CONTROL_PACKET;
 	// 链路控制目前也用这个接口好了
-	BleHostDataToLinkPush(rspData);
+	return BleHostDataToLinkPush(rspData);
+}
+
+/**
+ *@brief: 		LinkStartEncReq
+ *@details:		加密启动请求
+ *@param[in]	void  
+ *@retval:		DH_SUCCESS
+ */
+static u4 LinkStartEncReq(void)
+{
+    BlkHostToLinkData encStartRep;
+
+    encStartRep.m_pu1HostData[0] = LL_START_ENC_REQ;
+    encStartRep.m_u1PacketFlag = CONTROL_PACKET;
+    encStartRep.m_u2Length = 1;
+
+    return BleHostDataToLinkPush(encStartRep);
+}
+
+/**
+ *@brief: 		LinkStartEncRsp
+ *@details:		加密启动请求
+ *@param[in]	void  
+ *@retval:		DH_SUCCESS
+ */
+static u4 LinkStartEncRsp(void)
+{
+    BlkHostToLinkData encStartRep;
+
+    DEBUG_INFO("recv start enc rsp");
+    encStartRep.m_pu1HostData[0] = LL_START_ENC_RSP;
+    encStartRep.m_u1PacketFlag = CONTROL_PACKET;
+    encStartRep.m_u2Length = 1;
+
+    return BleHostDataToLinkPush(encStartRep);
 }
 
 /**
@@ -159,7 +202,6 @@ u4 CheckLinkChannelMapUpdateReq(u1 *pu1PDU, u1 *pu1NewChannelMap, u2 *pu2Instant
             index += BLE_CHANNEL_MAP_LEN;
             *pu2Instant = pu1PDU[index++];
             *pu2Instant += ((pu1PDU[index]<<8)&0xFF00);
-            DEBUG_INFO("u2 instant:%04x",*pu2Instant);
             return DH_SUCCESS;
         }
     }
@@ -215,23 +257,100 @@ u4 CheckLinkConnUpdateReq(u1 *pu1PDU, u1 *u1WinSize, u2 *u2WinOffset, u2 *u2Inte
     return ERR_LINK_NOT_CONN_UPDATE_REQ;    // 不是conn update控制请求
 }
 
+
 static u4 LinkTerminateHandle(u1 *pu1Data, u2 len)
 {
-    u1  reason;
-    BlkBleEvent bleEvt;
-    
-    if( NULL == pu1Data || 0==len )
-    {
-        return ERR_LINK_INVALID_PARAMS;
-    }
-    BleLinkReset();
-    reason = pu1Data[0];
-    bleEvt.m_u2EvtType = BLE_EVENT_DISCONNECTED;
-    bleEvt.m_event.m_blkDisconnInfo.m_u1ErrCode = reason;
-    BleEventPush(bleEvt);
-    
+    BleDisconnCommHandle(pu1Data[0]);
+ 
     return DH_SUCCESS;
 }
+
+
+ u4 LinkEncReqHandle(u1 *pu1Data, u2 len)
+{
+    u1  flag = 0;
+    u1  pu1SlaveIV[LL_ENC_IV_LEN];  /* LSB */
+    u1  pu1SlaveSKD[LL_ENC_SKD_LEN];/* LSB */
+    u1  pu1SK[BLE_ENC_KEY_SIZE];    /* LSB 会话秘钥*/
+    u1  pu1LTK[BLE_ENC_KEY_SIZE];   /* LSB */
+    u1  pu1IV[BLE_ENC_IV_SIZE];     /* LSB */
+    u1  pu1SKD[BLE_ENC_SKD_SIZE];   /* LSB */
+    u2  rspLen;
+    BlkHostToLinkData encRsp;
+    BlkBleEvent bleEvent;
+
+//    DEBUG_INFO("master RAND:");
+//    DEBUG_DATA(pu1Data, 8);
+//    DEBUG_INFO("master EDIV:");
+//    DEBUG_DATA(pu1Data+LL_ENC_RAND_LEN, 2);
+//    DEBUG_INFO("master SKD:");
+//    DEBUG_DATA(pu1Data+LL_ENC_RAND_LEN+LL_ENC_EDIV_LEN, 8);
+//    DEBUG_INFO("master IV:");
+//    DEBUG_DATA(pu1Data+LL_ENC_RAND_LEN+LL_ENC_EDIV_LEN+LL_ENC_SKD_LEN, 4);   
+
+    /*
+        IV = IVm || IVs     The least significant octet of IVm
+                            becomes the least significant octet of IV. The most significant octet of IVs
+                            becomes the most significant octet of IV
+
+        SKD = SKDm || SKDs  The least significant octet of SKDm
+                            becomes the least significant octet of SKD. The most significant octet of SKDs
+                            becomes the most significant octet of SKD.
+
+        SK = Encrypt(LTK, SKD)
+    */
+
+    BleSmGetLtk(pu1Data, pu1Data+LL_ENC_RAND_LEN, pu1LTK, &flag);
+    DEBUG_INFO("get LTK:");
+    DEBUG_DATA(pu1LTK, 16);
+    
+    DhGetRand(pu1SlaveIV, LL_ENC_IV_LEN);
+    memcpy(pu1IV, pu1Data+LL_ENC_RAND_LEN+LL_ENC_EDIV_LEN+LL_ENC_SKD_LEN, LL_ENC_IV_LEN);
+    memcpy(pu1IV+LL_ENC_IV_LEN, pu1SlaveIV, LL_ENC_IV_LEN);
+
+    DhGetRand(pu1SlaveSKD, LL_ENC_SKD_LEN);
+    memcpy(pu1SKD, pu1Data+LL_ENC_RAND_LEN+LL_ENC_EDIV_LEN, LL_ENC_SKD_LEN);
+    memcpy(pu1SKD+LL_ENC_SKD_LEN, pu1SlaveSKD, LL_ENC_SKD_LEN);
+
+    rspLen = 0;
+	encRsp.m_pu1HostData[rspLen++] = LL_ENC_RSP;
+	memcpy(encRsp.m_pu1HostData+rspLen, pu1SlaveSKD, LL_ENC_SKD_LEN);
+	rspLen += LL_ENC_SKD_LEN;
+	memcpy(encRsp.m_pu1HostData+rspLen, pu1SlaveIV, LL_ENC_IV_LEN);
+	rspLen += LL_ENC_IV_LEN;
+	encRsp.m_u2Length = rspLen;
+	encRsp.m_u1PacketFlag = CONTROL_PACKET;
+    BleHostDataToLinkPush(encRsp);
+
+//    DEBUG_INFO("slave SKD:");
+//    DEBUG_DATA(pu1SlaveSKD, LL_ENC_SKD_LEN);
+//    DEBUG_INFO("slave IV:");
+//    DEBUG_DATA(pu1SlaveIV, LL_ENC_IV_LEN);
+
+    memset(&bleEvent, 0x00, sizeof(bleEvent));
+    if(flag)
+    {
+        DhAesEnc(pu1SKD, pu1LTK, pu1SK);
+        LinkEncInfoCfg(pu1SK, pu1IV, pu1SKD);
+//        DEBUG_INFO("session key:");
+//        DEBUG_DATA(pu1SK, 16);
+
+        bleEvent.m_u2EvtType = BLE_EVENT_SM_ENC_COMPLETE;
+        LinkStartEncReq();
+    }
+    else
+    {
+        /* 需要上层设置 LTK */
+        LinkEncInfoCfg(NULL, pu1IV, pu1SKD);
+        bleEvent.m_u2EvtType = BLE_EVENT_SM_LTK_REQ;
+        memcpy(bleEvent.m_event.m_blkSmLtkReq.m_pu1Rand, pu1Data, LL_ENC_RAND_LEN);
+        memcpy(bleEvent.m_event.m_blkSmLtkReq.m_pu1Ediv, pu1Data+LL_ENC_RAND_LEN, LL_ENC_EDIV_LEN);
+    }
+    BleEventPush(bleEvent);
+
+    return DH_SUCCESS;
+}
+
 u4 BleLinkControlHandle(u1 *pu1Data, u2 len)
 {
 	u1	opcode;
@@ -255,12 +374,14 @@ u4 BleLinkControlHandle(u1 *pu1Data, u2 len)
 		break;
 		
 		case LL_ENC_REQ:
+	        LinkEncReqHandle(pu1Data+0x01, len-1);
 		break;
 		
 		case LL_START_ENC_REQ:
 		break;
 		
 		case LL_START_ENC_RSP:
+		    LinkStartEncRsp();
 		break;
 		
 		case LL_PAUSE_ENC_REQ:

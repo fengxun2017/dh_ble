@@ -28,6 +28,9 @@
 #define __BLELINKCONNECT_H__
 #include "../../DhGlobalHead.h"
 
+#define LINK_ENCRYPTED          (1)
+#define LINK_NO_ENCRYPTED       (0)
+
 typedef struct
 {
     u1  m_u1PeerBleAddrType;
@@ -77,6 +80,18 @@ extern void LinkConnStateInit(u1 sca);
 extern void LinkConnStateReset(void);
 extern void LinkConnSubStateSwitch(EnConnSubState enConnSubState);
 extern void LinkPeerAddrInfo(u1 *pu1Buff, u1 size);
+extern void LinkEncInfoCfg(u1 *pu1SK, u1 *pu1IV, u1 *pu1SKD);
+extern void LinkEncSkdGet(u1 *pu1SKD);
+extern void UpdateRecvPacketCounter(void);
+extern void UpdateSendPacketCounter(void);
+extern u1 GetRecvPacketCounter(void);
+extern u1 GetSendPacketCounter(void);
+
+extern u4 LinkEncKeyGet(u1 *pu1SK);
+extern u4 LinkDataDec(u1 LLID, u1 dir, u1 *pu1Key, u1 *pu1In, u2 InLen, u1 *pu1Out, u2 *outLen );
+extern u4 LinkDataEnc(u1 LLID, u1 dir, u1 *pu1Key, u1 *pu1In, u2 InLen, u1 *pu1Out, u2 *outLen );
+
+
 
 #ifdef __cplusplus
 #if __cplusplus

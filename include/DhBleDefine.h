@@ -41,6 +41,11 @@
 #define BLE_PACKET_LENGTH	(BLE_PREAMBLE_LENGTH+BLE_ACC_ADDR_LENGTH+BLE_PDU_LENGTH+BLE_CRC_LENGTH)
 #define BLE_VERSION_NUMBER			(0x06)		/* 6-4.0 7-4.1 8-4.2 9-5.0*/
 
+#define BLE_ENC_IV_SIZE             (8)
+#define BLE_ENC_SKD_SIZE            (16)
+#define BLE_ENC_PACKETCOUNTER_SIZE  (5)
+#define BLE_ENC_KEY_SIZE            (16)
+
 #define BLE_ATT_MTU_DEFALUT_SIZE    (23)
 #endif
 

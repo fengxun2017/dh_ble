@@ -384,7 +384,15 @@ u4 BleGattCharacteristicAdd( BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u
     pblkCurrAtt->m_blkAttType.m_u1UuidType = charaCfg.m_blkUuid.m_u1UuidType;
     pblkCurrAtt->m_blkAttType.m_pu1Uuid = pu1Uuid;
 
-    pblkCurrAtt->m_u2AttPermission = charaCfg.m_u2ValuePermission;
+    if( 0 == charaCfg.m_u2ValuePermission )
+    {
+        /* 没配置默认都设置为可读写*/
+        pblkCurrAtt->m_u2AttPermission = ATT_PERMISSION_READ | ATT_PERMISSION_WRITE;
+    }
+    else
+    {
+        pblkCurrAtt->m_u2AttPermission = charaCfg.m_u2ValuePermission;
+    }
     pblkCurrAtt->m_blkAttValue.m_pu1AttValue = pu1CharValueBuff;
     pblkCurrAtt->m_blkAttValue.m_u2MaxSize = u2BuffSize;
     pblkCurrAtt->m_blkAttValue.m_u2CurrentLen = 0;
@@ -417,7 +425,14 @@ u4 BleGattCharacteristicAdd( BlkGattCharCfg charaCfg, u1 *pu1CharValueBuff, u2 u
         pblkCurrAtt->m_blkAttValue.m_u2CurrentLen = 0;
         pblkCurrAtt->m_blkAttValue.m_u2MaxSize = 2;
         pblkCurrAtt->m_blkAttValue.m_pu1AttValue = pu1AttValue;
-        pblkCurrAtt->m_u2AttPermission = charaCfg.m_u2CCCDPermission;
+        if( 0 == charaCfg.m_u2CCCDPermission )
+        {
+            pblkCurrAtt->m_u2AttPermission = ATT_PERMISSION_READ | ATT_PERMISSION_WRITE;
+        }
+        else
+        {
+            pblkCurrAtt->m_u2AttPermission = charaCfg.m_u2CCCDPermission;
+        }
         pblkAttValue->m_u2CCCDHandle = currCount+1;     // handle值为数组下标+1
         pu2ValueHandle->m_u2CccdHandle = currCount+1;   // 返回cccd句柄
     }

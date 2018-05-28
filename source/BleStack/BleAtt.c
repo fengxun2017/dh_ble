@@ -58,6 +58,7 @@
 
 
 */
+#define CHECK_SUCCESSFUL                            0x00
 #define ATT_ERR_INVALID_HANDLE						0x01
 #define ATT_ERR_READ_NOT_PERMITTED					0x02
 #define ATT_ERR_WRITE_NOT_PERMITTED					0x03
@@ -324,6 +325,34 @@ __INLINE static u4 AttWriteRsp(void)
         return ERR_ATT_SEND_RSP_FAILED;
     }
     return DH_SUCCESS;
+}
+
+static u1 OperatePermissCheck(u1 u1Operate, u2 u2AttPermission, u2 u2SecurityStatus)
+{
+    if( ATT_OPERATE_READ==u1Operate )
+    {
+        if( !(u2AttPermission&ATT_PERMISSION_READ) ) 
+        {
+            return ATT_ERR_READ_NOT_PERMITTED;
+        }
+
+        if( u2AttPermission&(ATT_PERMISSION_READ_AUTHENTICATION|ATT_PERMISSION_READ_ENCRYPTION) )
+        {
+            if( !(u2SecurityStatus&SECURITY_STATUS_VALID))  //链路都没加密
+            {
+                return ATT_ERR_INSUFFICIENT_ENCRYPTION;
+            }
+            //链路加密了，那要看是否满足认证要求
+            if( u2AttPermission&ATT_PERMISSION_READ_AUTHENTICATION )
+            {
+                if( !(ATT_PERMISSION_READ_AUTHENTICATION&u2SecurityStatus) )
+                {
+                 return ATT_ERR_INSUFFICIENT_AUTHENTICATION;
+                }
+            }
+        }
+    }
+    return CHECK_SUCCESSFUL;
 }
 
 /**
@@ -629,6 +658,7 @@ static u4 AttReadReqHandle(u1 *pu1Req, u2 len)
     u2  u2AttValueLen = BLE_ATT_INVALID_HANDLE;
     u2  u2AttHandle = BLE_ATT_INVALID_HANDLE;
     u1  index = 0;
+    u1  permissionCheck;
     if( NULL == pu1Req )
     {
         return ERR_ATT_INVALID_PARAMS;
@@ -645,6 +675,12 @@ static u4 AttReadReqHandle(u1 *pu1Req, u2 len)
     if( NULL == pblkAtt )
     {
         return AttErrRsp(ATT_OPCODE_READ_REQ, u2AttHandle, ATT_ERR_INVALID_HANDLE);
+    }
+
+    permissionCheck = OperatePermissCheck(ATT_OPERATE_READ, pblkAtt->m_u2AttPermission, BleSecurityStatusGet());
+    if( CHECK_SUCCESSFUL != permissionCheck)
+    {
+        return  AttErrRsp(ATT_OPCODE_READ_REQ, u2AttHandle, permissionCheck);
     }
     /* 只返回ATT_MTU-1 长度的内容，如果有剩余内容，client可以通过Read Blob Request 获取 */
     u2AttValueLen = (pblkAtt->m_blkAttValue.m_u2CurrentLen>sizeof(pu1AttValue))?sizeof(pu1AttValue):pblkAtt->m_blkAttValue.m_u2CurrentLen;

@@ -43,8 +43,21 @@
 #define LLID_EMPTY_PACKET			(0x01)			// 空包的LLID需要设置成0x01
 #define LLID_CONTROL				(0x03)
 
-#define CONTROL_PACKET              (0x01)
-#define DATA_PACKET                 (0x00)
+#define CONTROL_PACKET              (0x03)
+#define DATA_PACKET                 (0x02)
+
+#define LINK_DATA_ENC_FLAG          (1)
+#define LINK_DATA_NO_ENC            (0)
+
+/* The Connection Timeout error code indicates that the link supervision timeout has expired for a given connection */
+#define LINK_DISCONN_REASON_TIMEOUT                 (0x08)  
+/* The Remote User Terminated Connection error code indicates that the user on the remote device terminated the connection.*/
+#define LINK_DISCONN_REASON_REMOTE_TERMINATED       (0x13)
+/* The Connection Terminated Due to MIC Failure error code indicates that the connection was terminated because the Message Integrity Check (MIC) failed on a received packet */
+#define LINK_DISCONN_REASON_MIC_FAILED              (0x3D)
+/*The Instant Passed error code indicates that an LMP PDU or LL PDU that includes an instant cannot be performed because the instant when this would have occurred has passed.*/
+#define LINK_DISCONN_REASON_INSTANT_PASSED          (0x28)
+
 typedef struct
 {
 	u1	m_u1Header1;
@@ -66,7 +79,7 @@ typedef struct
 /* host层数据推送到一个数据队列中，链路层进入连接事件后再取出数据，部分链路控制返回也当做host层数据通过这个数据结构放到数据队列中 */
 typedef struct
 {
-	u1 m_u1Length;					// buff中数据长度
+	u1 m_u2Length;					// buff中数据长度
 	u1 m_u1PacketFlag;
 	u1 m_pu1HostData[BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH];
 }BlkHostToLinkData;
@@ -93,12 +106,16 @@ extern "C"{
 
 extern void BleLinkInit(void);
 extern void BleLinkReset(void);
-
 extern void BleLinkStateHandlerReg(EnBleLinkState state, BleRadioEvtHandler evtHandler);
 extern void BleLinkStateSwitch(EnBleLinkState state);
+extern void BleLinkPeerAddrInfoGet(BlkBleAddrInfo *addr);
+extern void BleDisconnCommHandle(u1 DisconnReason);
+extern void LinkEncStartFlagCfg(u1 flag);
+
 extern u4 BleHostDataToLinkPop(BlkHostToLinkData *pblkData);
 extern u4 BleHostDataToLinkPush(BlkHostToLinkData blkData);
 extern u4 BleLinkDataToHostPush(BlkLinkToHostData blkData);
+extern u4 NotifyHostDisconn(u1 reason);
 
 
 #ifdef __cplusplus
