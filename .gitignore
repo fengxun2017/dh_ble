@@ -51,4 +51,11 @@
 *.cmd
 .tmp_versions/
 .vscode
-test
+*.uvoptx*
+*.uvguix*
+*.uvgui*
+*.uvmpw
+*.scvd
+JLink*
+/test/Listings
+/test/Objects
