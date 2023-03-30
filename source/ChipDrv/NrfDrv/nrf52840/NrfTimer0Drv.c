@@ -24,9 +24,19 @@
 *
 */
 
-#include "../../../include/DhGlobalHead.h"
+#include "../../../../include/DhGlobalHead.h"
 
+#define nDEBUG_NRF_TIMER0_ENABLE
 
+#ifndef DEBUG_NRF_TIMER0_ENABLE
+#undef SEGGER_SYSVIEW_PrintfHost
+#undef SEGGER_SYSVIEW_RecordEnterISR
+#undef SEGGER_SYSVIEW_RecordExitISR
+
+#define SEGGER_SYSVIEW_PrintfHost(...)
+#define SEGGER_SYSVIEW_RecordEnterISR(...)
+#define	SEGGER_SYSVIEW_RecordExitISR(...)
+#endif
 
 #define		INTEN_COMPARE0		(1<<16)
 #define		INTEN_COMPARE1		(1<<17)
@@ -67,8 +77,8 @@ void NrfTimer0Init(void)
 	NRF_TIMER0->BITMODE = BIT_MODE_32;
 	NRF_TIMER0->PRESCALER = PRESCALER_VALUE;	
 
-	/* 协议栈的高精度定时器，目前先设置最高中断优先级吧 */
-	NVIC_SetPriority(TIMER0_IRQn, DH_IRQ_PRIORITY_0);	
+	/* 协议栈的高精度定时器，设置最高中断优先级 */
+	NVIC_SetPriority(TIMER0_IRQn, 0);	
 	NVIC_ClearPendingIRQ(TIMER0_IRQn);
 	NVIC_EnableIRQ(TIMER0_IRQn);
 }
@@ -141,7 +151,7 @@ void TIMER0_IRQHandler(void)
 		{
 			S_NrfTimer0IntCb(NRF_TIMER0_EVT_COMPARE3);
 		}
-	}	
+	}
 }
 
 

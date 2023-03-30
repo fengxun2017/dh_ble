@@ -24,7 +24,7 @@
 *
 */
 
-#include "../../../include/DhGlobalHead.h"
+#include "../../../../include/DhGlobalHead.h"
 
 #define SHORT_READ_START			(1<<0)
 #define SHORT_END_DISABLE			(1<<1)
@@ -36,11 +36,11 @@
 #define RADIO_MODE_1MBLE			3
 
 
-#define PCNF0_LFLEN_8BIT			(8)			// 4.0负载数据不会超过37字节，6bit就够了
+#define PCNF0_LFLEN_8BIT			(8)		
 #define PCNF0_S0LEN_1BYTE			(1<<8)
 #define PCNF0_S1LEN_0BIT			(0<<16)
 
-#define PCNF1_MAXLEN_VALUE			(BLE_PDU_LENGTH-BLE_PDU_HEADER_LENGTH)	//51822的radio PDU中的前两字节不算在payload长度内
+#define PCNF1_MAXLEN_VALUE			(255)	//52840的 radio包结构中的payload最大为 255
 #define PCNF1_STATLEN_0				(0<<8)
 #define PCNF1_BALEN_3				(3<<16)
 #define PCNF1_ENDIA_LITTLE			(0<<24)
@@ -97,36 +97,51 @@ void NrfRadioTxPowerSet(s1 s1TxPower)
 void NrfRadioInit(void)
 {
 
+	// 收到 ready(TxIdle/RxIdle)信号后，自动设置 start
+	// 收到 end（Tx/Rx） 信号后，自动设置 disable
 	NRF_RADIO->SHORTS = SHORTS_COMM;
+
+	// 只使能 disable 中断，表明发送/接收完成
 	NRF_RADIO->INTENCLR = 0xFFFFFFFF;
 	NRF_RADIO->INTENSET = INTEN_DISABLED;
+
+	// 设定死只使用 ble 的 1M/s 发送速率
 	NRF_RADIO->MODE = RADIO_MODE_1MBLE;
+
+	// 只使用 1M/s 速率，因此 preamble 为 1字节
+	// 52840包结构中的 S0，LENGTH，S1 共同构成了BLE 广播包/数据包 PDU 中的 header
+	// 目前只考虑广播通道/数据通道PDU中的header为2 字节的情况，
+	// 不考虑数据通道header为3字节（使用CTEInfo，与AOA，AOD有关）的情况，所以nordic包结构中的S1长度配置为0
+	// 不考虑为长距离通信引入的 LE CODE PHY，所以nordic包结构中的CI，TERM 的长度都配置为0
 	NRF_RADIO->PCNF0 = PCNF0_LFLEN_8BIT |PCNF0_S0LEN_1BYTE |PCNF0_S1LEN_0BIT;
+	
+	// BLE的Access-Address 为4字节，在Nordic 的包结构中，由 BASE 和 PREFIX（1字节） 组成，所以 BASE设置为3字节
+	// 52840的包结构中的payload最大长度为255
+	// 52840的包结构中的S0, LENGTH,S1和PAYLOAD 共同组成了 BLE广播/数据 PDU，这部分数据的空中序是LSB
+	// 使能数据白化
 	NRF_RADIO->PCNF1 = PCNF1_BALEN_3 | PCNF1_MAXLEN_VALUE | PCNF1_STATLEN_0 | PCNF1_ENDIA_LITTLE | PCNF1_WHITEEN_ENABLE;
+	
+	// 3字节crc，BLE 只计算了 广播/数据包的PDU部分，所以这里配置跳过address部分
 	NRF_RADIO->CRCCNF = CRCCNF_LEN_3 | CRCCNF_SKIPADDR;
+	// BLE CRC的生成多项式为x24 + x10 + x9 + x6 + x4 + x3 + x + 1
+	// 换成二进制 1 0000 0000 0000 0110 0101 1011 -> 0x100065B
 	NRF_RADIO->CRCPOLY = CRCPOLY_BLE_POLY;
+
+	// 帧间间隔控制（两个连续数据包间隔），52840提供了专用寄存器用来控制帧间间隔。
+	// BLE 要求两个连续包，上一个包的最后一个bit，和下一个包的第一个bit 之间间隔为 150us
+	// 通过配置这个 TIFS寄存器为150，可以让硬件帮我们自动控制在收到一个数据包后，至少延迟150us再将之前配置好的数据发送出去。
 	NRF_RADIO->TIFS = TIFS_VALUE;
 
-
-
+	// 清空地址信息
 	NRF_RADIO->BASE0 = 0x00;
 	NRF_RADIO->BASE1 = 0x00;
 	NRF_RADIO->PREFIX0 = 0x00;
 	NRF_RADIO->PREFIX1 = 0x00;
 	
-	NVIC_SetPriority(RADIO_IRQn, DH_IRQ_PRIORITY_0);	
+	// 配置 radio 中断为最高优先级
+	NVIC_SetPriority(RADIO_IRQn, 0);	
 	NVIC_ClearPendingIRQ(RADIO_IRQn);
 	NVIC_EnableIRQ(RADIO_IRQn);	
-
-	if( (NRF_FICR->OVERRIDEEN&(1<<3)) == 0 )
-	{
-		NRF_RADIO->OVERRIDE4 = 0x80000000;
-		NRF_RADIO->OVERRIDE0 = NRF_FICR->BLE_1MBIT[0];
-		NRF_RADIO->OVERRIDE1 = NRF_FICR->BLE_1MBIT[1];
-		NRF_RADIO->OVERRIDE2 = NRF_FICR->BLE_1MBIT[2];
-		NRF_RADIO->OVERRIDE3 = NRF_FICR->BLE_1MBIT[3];
-		NRF_RADIO->OVERRIDE4 |= (NRF_FICR->BLE_1MBIT[4]&0xFFFFFFF);
-	}
 }
 
 /**
@@ -141,6 +156,7 @@ void NrfLogicAddrCfg(u1 u1LogicAddr, u4 u4PhyAddr)
 	u4 u4BaseAddr;		// 接入地址的低三字节
 	u1 u1Prefix;		// 接入地址的高字节
 
+	// nordic的BALEN设置小于4的话，base寄存器会丢掉低字节
 	u4BaseAddr = (u4PhyAddr<<8)&0xFFFFFF00;
 	u1Prefix = (u4PhyAddr>>24)&0xff;
 	if ( LOGIC_ADDR_0 == u1LogicAddr )

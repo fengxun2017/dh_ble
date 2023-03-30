@@ -140,7 +140,6 @@ void BleLinkInit(void)
 	NVIC_ClearPendingIRQ(BLE_STACK_SOFTIRQ);
 	NVIC_SetPriority(BLE_STACK_SOFTIRQ, DH_IRQ_PRIORITY_3);
 	NVIC_EnableIRQ(BLE_STACK_SOFTIRQ);
-	
 }
 
 u4 NotifyHostDisconn(u1 reason)

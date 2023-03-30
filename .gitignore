@@ -50,3 +50,5 @@
 *.mod*
 *.cmd
 .tmp_versions/
+.vscode
+test

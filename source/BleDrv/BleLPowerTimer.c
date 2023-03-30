@@ -131,7 +131,7 @@ void BleLPowerTimerInit( EnBleLPowerClkSrc src, u4 u4CalTimeoutMs )
     memset( &s_blkBleLPTimer, 0x00, sizeof( s_blkBleLPTimer ) );
 	if( LP_CLK_SRC_RC_250_PPM == src)
 	{
-    	NrfLFClkStart(LFCLK_SRC_RC, u4CalTimeoutMs);
+    	NrfLFClkStart(LFCLK_SRC_RC, u4CalTimeoutMs, 1);
     }
     NrfRtc0HandlerRegister( Rtc0IntCb );
     NrfRtc0Init();
@@ -172,7 +172,7 @@ u4 BleLPowerTimerStart( EnBleLPowerTimer timerId, u4 timeoutUs, BleLPowerTimerou
 		NrfRtc0Start();
 	}
 		/* 
-			如果是BLE_LP_TIMER1 或 BLE_LP_TIMER2,则在协议栈中用是在BLE_LP_TIMER长定时器中定义更短的定时器来处理其中的其他超时
+			如果是BLE_LP_TIMER1 或 BLE_LP_TIMER2,则在协议栈中用是在BLE_LP_TIMER0长定时器中定义更短的定时器来处理其中的其他超时
 			所以使用时不需要复位硬件RTC0,只需读取当前的计数值，然后加上超时值后配置CC比较寄存器，因为是在BLE_LP_TIMER0的使用
 			范围内使用的区间更小的定时器，所以不会出现当前值加上超时值后溢出的情况
 		*/
@@ -187,7 +187,7 @@ u4 BleLPowerTimerStart( EnBleLPowerTimer timerId, u4 timeoutUs, BleLPowerTimerou
 
 /**
  *@brief: 		BleLPowerTimerStop
- *@details:		地址低功耗定时器
+ *@details:		停止低功耗定时器
  *@param[in]	timerId  
  
  *@retval:		void

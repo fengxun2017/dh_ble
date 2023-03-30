@@ -84,7 +84,7 @@ __INLINE void NrfRadioPacketPtrCfg(u1 *pu1Packet){NRF_RADIO->PACKETPTR = (u4)pu1
 
  *@retval:		void
  */
-__INLINE void NrfRadioFreqCfg(u2 u2Freq){NRF_RADIO->FREQUENCY = (u2Freq-2400);}
+__INLINE void NrfRadioFreqCfg(u2 u2Freq){NRF_RADIO->FREQUENCY = (u2Freq-2400)&0x7f;}
 
 /**
  *@brief: 		NrfRadioTxAddrCfg

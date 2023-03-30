@@ -33,8 +33,8 @@
 #define RF_CHANNEL39_FREQ			(2480)
 /**
  *@brief: 		GetRfChannelFreq
- *@details:		获取数据通道对应的频率
- *@param[in]	u1 u1DataChannel  0-36
+ *@details:		获据通道对应的频率
+ *@param[in]	u1 u1DataChannel  0-39
 
  *@retval:		具体频率	
  */

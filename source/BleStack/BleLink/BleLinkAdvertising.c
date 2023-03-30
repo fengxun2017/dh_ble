@@ -218,7 +218,7 @@ __INLINE static void AdvRxWaitTimeoutHandler(void *pvalue)
 	BleRadioDisable();
 
 	/*
-        这里不立刻做切换下一个广播的动作，nrf51芯片对底层radio的状态机限定比较严格，
+        这里不立刻做切换下一个广播的动作，nordic芯片对底层radio的状态机限定比较严格，
         如果在radio不是disable的状态下启动发射会导致radio出错，所以这里只做关闭接收操作。
         等收到disabled事件后才启动下个通过的广播。
 	*/
@@ -255,7 +255,6 @@ __INLINE static void AdvTxScanRsp(void)
  *@retval:		void
  */
 __INLINE static void HandleAdvTxDone(void)
-
 {
 	EnAdvSubState	advState;
 
@@ -320,7 +319,7 @@ __INLINE static void HandleAdvRxDone(void)
 
 	            综上，必须要加快对于扫描请求的响应。所以对于广播态的接收操作也像发送一样，做成自动切换。
 	            即每次接收前打开 接收完成后自动切换到发送态的开关。
-	            这样就可以利用在nordic芯片准备发送的150us时间来准备好数据，加快了响应速度。而不需要像之前一样先准备好再打开发送，这样会浪费150us
+	            这样就可以利用在nordic芯片准备发送的150us时间来准备好数据，加快了响应速度。而不需要像之前一样先准备好再打开发送
 
 	            不过因为接收到的不一定就是扫描请求，可能是连接请求，这时候是不需要发送数据的，所以需要及时关闭radio，不然就会有一个错误的发送行为。
 	            这里仅仅关闭操作还不行，因为代码实现中关闭后会产生 radio 完成事件，最终导致我 链路处于 连接建立中 状态，却收到了radio完成事件，以为是收到了连接后第一个包。最终就导致链路状态错误。
@@ -518,7 +517,7 @@ u4 LinkAdvStart(void)
 
 	BleRadioCrcInit(BLE_ADV_CHANNEL_CRC_INIT);					//广播态下crc初值为固定值
 	/*
-    	先只考虑一个连接的情况吧，都用逻辑地址0
+    	只考虑一个连接的情况吧，都用逻辑地址0
     */
     BleRadioTxRxAddrCfg(0, BLE_ADV_ACCESS_ADDR);
 	whiteIv = GetChannelWhiteIv(channel);						// 配置白化初值

@@ -43,14 +43,16 @@ extern "C"{
 
 #include "./ChipDrv/CommDrv/HardwareUart.h"
 
+#ifdef HARDWARE_NRF52840
+    #include "./ChipDrv/NrfDrv/nrf52840.h"
+    #include "./ChipDrv/NrfDrv/nrf52840_delay.h"
+    #include "./ChipDrv/NrfDrv/nrf52840_bitfields.h"
+#endif
 
-#include "./ChipDrv/NrfDrv/system_nrf51.h"
-#include "./ChipDrv/NrfDrv/nrf51.h"
-#include "./ChipDrv/NrfDrv/nrf51_bitfields.h"
 #include "./ChipDrv/NrfDrv/NrfRtcDrv.h"
 #include "./ChipDrv/NrfDrv/NrfRadioDrv.h"
 #include "./ChipDrv/NrfDrv/NrfTimerDrv.h"
-#include "./ChipDrv/NrfDrv/nrf_gpio.h"
+//#include "./ChipDrv/NrfDrv/nrf_gpio.h"
 #include "./ChipDrv/NrfDrv/NrfClockDrv.h"
 #include "./ChipDrv/NrfDrv/NrfUart.h"
 

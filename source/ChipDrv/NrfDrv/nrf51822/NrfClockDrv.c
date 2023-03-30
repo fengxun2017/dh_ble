@@ -24,7 +24,7 @@
 *
 */
 
-#include "../../../include/DhGlobalHead.h"
+#include "../../../../include/DhGlobalHead.h"
 
 #define nDEBUG_CLOCK_ENABLE
 
@@ -45,7 +45,7 @@
 
 #define CAL_TIME_UNIT_MS	(250)
 
-u4	g_CalTimeout = 0;
+static u4	g_CalTimeout = 0;
 
 
 static u1 IsHFCLKSrcXtal(void)
@@ -66,11 +66,18 @@ static u1 IsHFCLKSrcXtal(void)
  */
 static void NrfRcOscCalStart(u4 timeoutMs )
 {
+	// 校准定时器是一个递减计数器，计数器的单位是250ms
+	if (timeoutMs < 250) {
+		timeoutMs = 250;
+	}
 	DEBUG_INFO("start rc cal");
+	// 使能校准定时器超时中断，以及校准完成中断
 	NRF_CLOCK->INTENSET = INTENSET_CTTO | INTENSET_DONE;
+
 	NRF_CLOCK->CTIV = timeoutMs/CAL_TIME_UNIT_MS;
 
-	NVIC_SetPriority(POWER_CLOCK_IRQn, DH_IRQ_PRIORITY_3);	
+	// 我们使用了LFCLK校准，相对而言不那么重要，硬件中断优先级设为3（比radio低）。
+	NVIC_SetPriority(POWER_CLOCK_IRQn, 3);	
 	NVIC_ClearPendingIRQ(POWER_CLOCK_IRQn);
 	NVIC_EnableIRQ(POWER_CLOCK_IRQn);
 
@@ -85,7 +92,7 @@ static void NrfRcOscCalStart(u4 timeoutMs )
  *@param[in]	src		低频时钟源 
  *@retval:		void
  */
-void NrfLFClkStart( EnNrfLFClockSrc src , u4 u4CalTimeoutMs)
+void NrfLFClkStart( EnNrfLFClockSrc src , u4 u4CalTimeoutMs, u1 enableCal)
 {
 	NRF_CLOCK->LFCLKSRC = src;
 	NRF_CLOCK->TASKS_LFCLKSTART = TASK_START;
@@ -96,8 +103,6 @@ void NrfLFClkStart( EnNrfLFClockSrc src , u4 u4CalTimeoutMs)
 		NrfRcOscCalStart(u4CalTimeoutMs);	//启动校准
 	}
 }
-
-
 
 /**
  *@brief: 		NrfHFClkSrcSetXtal
@@ -128,7 +133,7 @@ void POWER_CLOCK_IRQHandler(void)
 		NRF_CLOCK->EVENTS_CTTO = 0;
 		if( HFCLK_SRC_XTAL == IsHFCLKSrcXtal() )
 		{
-			/* 使用了外部高频晶振时才能校准 */
+			/* 使用了外部高频晶振，高频时钟才是比较精确的，此时才能校准才有意义 */
 			NRF_CLOCK->TASKS_CAL = TASK_START;
 			DEBUG_INFO("cal....");
 		}
@@ -142,7 +147,7 @@ void POWER_CLOCK_IRQHandler(void)
 	if( NRF_CLOCK->EVENTS_DONE )
 	{
 		NRF_CLOCK->EVENTS_DONE = 0;
-		/* 重启校准定时器 */
+		/* 重启校准定时器，实现周期校准 */
 		NRF_CLOCK->CTIV = g_CalTimeout/CAL_TIME_UNIT_MS;
 		NRF_CLOCK->TASKS_CTSTART = TASK_START;
 		DEBUG_INFO("cal done");

@@ -117,7 +117,6 @@ u4 BleAdvStart(BlkAdvChannelOn channels, u2 IntervalMs)
     LinkScanRspCfg(pu1Header, 0, BLE_PDU_HEADER_LENGTH);
     
 	return LinkAdvStart();
-	
 }
 
 

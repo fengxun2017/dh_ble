@@ -28,10 +28,10 @@
 #define __DH_DEBUG_H__
 
 #ifdef DEBUG_LOG
-#include "SEGGER_RTT_Conf.h"
-#include "SEGGER_RTT.h"
-#include "rtt_log.h"
-#include "DhDebug.h"
+//#include "SEGGER_RTT_Conf.h"
+//#include "SEGGER_RTT.h"
+//#include "rtt_log.h"
+//#include "DhDebug.h"
 /*
 	不要在协议栈的内部时序部分代码中添加日志打印，调试信息的处理比较耗时可能需要一百多us，这已经可以影响
 	BLE协议栈底层的时序精度要求了。

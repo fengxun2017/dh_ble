@@ -31,7 +31,7 @@
 /* NOTE: Template files (including this one) are application specific and therefore expected to 
    be copied into the application project folder prior to its use! */
 
-#include "../../../include/DhGlobalHead.h"
+#include "../../../../include/DhGlobalHead.h"
 
 /*lint ++flb "Enter library region" */
 

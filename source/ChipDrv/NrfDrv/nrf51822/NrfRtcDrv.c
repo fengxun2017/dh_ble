@@ -24,18 +24,13 @@
 *
 */
 
-#include "../../../include/DhGlobalHead.h"
+#include "../../../../include/DhGlobalHead.h"
 
-
-#define		INTEN_TICK			(1<<0)
-#define		INTEN_OVRFLW		(1<<1)
 #define		INTEN_COMPARE0		(1<<16)
 #define		INTEN_COMPARE1		(1<<17)
 #define		INTEN_COMPARE2		(1<<18)
 #define		INTEN_COMPARE3		(1<<19)
 
-#define		EVTEN_TICK			(1<<0)
-#define		EVTEN_OVRFLW		(1<<1)
 #define		EVTEN_COMPARE0		(1<<16)
 #define		EVTEN_COMPARE1		(1<<17)
 #define		EVTEN_COMPARE2		(1<<18)

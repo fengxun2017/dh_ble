@@ -35,9 +35,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdarg.h>
+
+#include "../source/project_conf.h"
+
 #include "DhTypes.h"
 #include "DhBleDefine.h"
-#include "DhConfig.h"
 #include "DhBleAux.h"
 #include "./Common/DhQueue.h"
 #include "./Common/DhBuffManage.h"
@@ -46,6 +48,7 @@
 
 #include "./Crypto/SwAes/aes.h"
 #include "./Crypto/SwAes/aes_locl.h"
+
 #define CRITICAL_REGION_ENTER()		__disable_irq()
 #define CRITICAL_REGION_EXIT()		__enable_irq()
 

@@ -51,13 +51,13 @@ void BleRadioEvtHandlerReg( BleRadioEvtHandler intHandler )
 /**
  *@brief: 		BleRadioInit
  *@details:		Ble的Radio初始化
- 				启动16M外部晶振，初始化radio，设置默认发射功率，注册radio中断处理函数
+ 				启动外部高频晶振，初始化radio，设置默认发射功率，注册radio中断处理函数
 
  *@retval:		void
  */
 void BleRadioInit( void )
 {
-    NrfHFClkSrcSetXtal();	// ble需要外部16M晶振
+    NrfHFClkSrcSetXtal();	// ble需要外部高频晶振
     NrfRadioInit();
     NrfRadioTxPowerSet( DEFAULT_TXPOWER );
     NrfRadioHandlerReg(HwRadioIntHandler);
