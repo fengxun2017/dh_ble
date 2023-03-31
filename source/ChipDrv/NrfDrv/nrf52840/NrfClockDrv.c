@@ -77,7 +77,8 @@ static void NrfRcOscCalStart(u4 timeoutMs )
 	NRF_CLOCK->INTENSET = INTENSET_CTTO | INTENSET_DONE;
 	NRF_CLOCK->CTIV = timeoutMs/CAL_TIME_UNIT_MS;
 
-	NVIC_SetPriority(POWER_CLOCK_IRQn, DH_IRQ_PRIORITY_3);	
+	// 校准定时器，设置个低优先级就好了
+	NVIC_SetPriority(POWER_CLOCK_IRQn, 3);	
 	NVIC_ClearPendingIRQ(POWER_CLOCK_IRQn);
 	NVIC_EnableIRQ(POWER_CLOCK_IRQn);
 

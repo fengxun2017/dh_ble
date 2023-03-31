@@ -92,7 +92,7 @@ void NrfRtc0Init(void)
 	NRF_RTC0->PRESCALER = PRESCALER_VALUE;
 
 	/* 协议栈的低功耗唤醒定时器，设置最高中断优先级吧 */
-	NVIC_SetPriority(RTC0_IRQn, 0xff);	
+	NVIC_SetPriority(RTC0_IRQn, 0);	
 	NVIC_ClearPendingIRQ(RTC0_IRQn);
 	NVIC_EnableIRQ(RTC0_IRQn);
 }
