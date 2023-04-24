@@ -76,7 +76,7 @@ typedef struct
 	u1	m_pu1LinkData[BLE_PDU_LENGTH];
 }BlkLinkToHostData;
 
-/* host层数据推送到一个数据队列中，链路层进入连接事件后再取出数据，部分链路控制返回也当做host层数据通过这个数据结构放到数据队列中 */
+/* host层数据推送到一个数据队列中，链路层进入连接事件后再取出数据，部分链路控制返回的响应也当做host层数据通过这个数据结构放到数据队列中 */
 typedef struct
 {
 	u1 m_u2Length;					// buff中数据长度
